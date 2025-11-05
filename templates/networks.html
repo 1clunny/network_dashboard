@@ -5,20 +5,47 @@
   <i data-lucide="wifi"></i> Network Visualization
 </h1>
 
-<!-- Canvas for glowing nodes -->
-<canvas id="networkCanvas" class="w-full h-[70vh] bg-gray-900/50 rounded-2xl border border-gray-800 shadow-glow"></canvas>
+<!-- Glowing network visualization -->
+<div class="relative">
+  <canvas id="networkCanvas" class="w-full h-[70vh] bg-gray-900/50 rounded-2xl border border-gray-800 shadow-glow"></canvas>
+
+  <!-- Tooltip -->
+  <div id="tooltip" class="absolute hidden px-4 py-2 bg-gray-800/90 text-sm text-gray-100 rounded-xl border border-gray-700 pointer-events-none backdrop-blur-xl">
+    <div id="tooltip-ip" class="font-semibold text-accent"></div>
+    <div id="tooltip-host" class="text-gray-400"></div>
+    <div id="tooltip-status" class="text-xs mt-1"></div>
+  </div>
+</div>
 
 <style>
   canvas {
     display: block;
     margin: auto;
-    background: radial-gradient(circle at center, rgba(13,17,28,0.8), rgba(5,7,11,0.9));
+    background: radial-gradient(circle at center, rgba(13,17,28,0.85), rgba(5,7,11,0.95));
+  }
+
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(0, 198, 255, 0.1);
+  }
+
+  #tooltip {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    opacity: 0;
+  }
+  #tooltip.show {
+    opacity: 1;
+    transform: translateY(-4px);
   }
 </style>
 
 <script>
   const canvas = document.getElementById('networkCanvas');
   const ctx = canvas.getContext('2d');
+  const tooltip = document.getElementById('tooltip');
+  const ipEl = document.getElementById('tooltip-ip');
+  const hostEl = document.getElementById('tooltip-host');
+  const statusEl = document.getElementById('tooltip-status');
+
   let width, height;
   function resize() {
     width = canvas.width = canvas.clientWidth;
@@ -27,26 +54,34 @@
   window.addEventListener('resize', resize);
   resize();
 
-  // Generate random nodes
-  const nodes = Array.from({length: 10}, (_, i) => ({
+  // Fake device list for now (later we can link this to real scan data)
+  const devices = [
+    { ip: '192.168.1.1', host: 'router.local', status: 'Online', color: '#00C6FF' },
+    { ip: '192.168.1.12', host: 'desktop.local', status: 'Online', color: '#2563EB' },
+    { ip: '192.168.1.22', host: 'laptop.local', status: 'Idle', color: '#FFD700' },
+    { ip: '192.168.1.34', host: 'phone.local', status: 'Offline', color: '#FF4B4B' },
+    { ip: '192.168.1.45', host: 'tv.local', status: 'Online', color: '#00FF88' },
+    { ip: '192.168.1.67', host: 'tablet.local', status: 'Online', color: '#2563EB' }
+  ];
+
+  const nodes = devices.map(d => ({
+    ...d,
     x: Math.random() * width,
     y: Math.random() * height,
     dx: (Math.random() - 0.5) * 0.6,
     dy: (Math.random() - 0.5) * 0.6,
-    color: i === 0 ? '#00C6FF' : '#2563EB',
-    radius: i === 0 ? 10 : 6
+    radius: 8
   }));
 
   function draw() {
     ctx.clearRect(0, 0, width, height);
-    // draw lines
-    ctx.beginPath();
+    // draw connections
     nodes.forEach((a, i) => {
       nodes.forEach((b, j) => {
         if (i < j) {
           const dist = Math.hypot(a.x - b.x, a.y - b.y);
-          if (dist < 200) {
-            const alpha = 1 - dist / 200;
+          if (dist < 220) {
+            const alpha = 1 - dist / 220;
             ctx.strokeStyle = `rgba(0,198,255,${alpha * 0.5})`;
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -57,11 +92,11 @@
         }
       });
     });
+
     // draw nodes
     nodes.forEach(n => {
       ctx.beginPath();
-      const glow = n === nodes[0] ? 0.9 : 0.4;
-      ctx.shadowBlur = 20;
+      ctx.shadowBlur = 15;
       ctx.shadowColor = n.color;
       ctx.fillStyle = n.color;
       ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
@@ -84,8 +119,33 @@
     draw();
     requestAnimationFrame(loop);
   }
-
   loop();
+
+  // Tooltip detection
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    let hovered = null;
+    nodes.forEach(n => {
+      const dist = Math.hypot(n.x - x, n.y - y);
+      if (dist < n.radius + 5) hovered = n;
+    });
+
+    if (hovered) {
+      ipEl.textContent = hovered.ip;
+      hostEl.textContent = hovered.host;
+      statusEl.textContent = hovered.status;
+      tooltip.classList.add('show');
+      tooltip.style.left = `${x + 20}px`;
+      tooltip.style.top = `${y - 10}px`;
+      tooltip.classList.remove('hidden');
+    } else {
+      tooltip.classList.remove('show');
+      tooltip.classList.add('hidden');
+    }
+  });
 </script>
 
 {% endblock %}
