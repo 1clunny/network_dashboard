@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<h1 class="text-2xl font-bold text-accent mb-8 flex items-center gap-2">
+  <i data-lucide="wifi"></i> Network Visualization
+</h1>
+
+<!-- Canvas for glowing nodes -->
+<canvas id="networkCanvas" class="w-full h-[70vh] bg-gray-900/50 rounded-2xl border border-gray-800 shadow-glow"></canvas>
+
+<style>
+  canvas {
+    display: block;
+    margin: auto;
+    background: radial-gradient(circle at center, rgba(13,17,28,0.8), rgba(5,7,11,0.9));
+  }
+</style>
+
+<script>
+  const canvas = document.getElementById('networkCanvas');
+  const ctx = canvas.getContext('2d');
+  let width, height;
+  function resize() {
+    width = canvas.width = canvas.clientWidth;
+    height = canvas.height = canvas.clientHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Generate random nodes
+  const nodes = Array.from({length: 10}, (_, i) => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    dx: (Math.random() - 0.5) * 0.6,
+    dy: (Math.random() - 0.5) * 0.6,
+    color: i === 0 ? '#00C6FF' : '#2563EB',
+    radius: i === 0 ? 10 : 6
+  }));
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    // draw lines
+    ctx.beginPath();
+    nodes.forEach((a, i) => {
+      nodes.forEach((b, j) => {
+        if (i < j) {
+          const dist = Math.hypot(a.x - b.x, a.y - b.y);
+          if (dist < 200) {
+            const alpha = 1 - dist / 200;
+            ctx.strokeStyle = `rgba(0,198,255,${alpha * 0.5})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        }
+      });
+    });
+    // draw nodes
+    nodes.forEach(n => {
+      ctx.beginPath();
+      const glow = n === nodes[0] ? 0.9 : 0.4;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = n.color;
+      ctx.fillStyle = n.color;
+      ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+  }
+
+  function update() {
+    nodes.forEach(n => {
+      n.x += n.dx;
+      n.y += n.dy;
+      if (n.x < 0 || n.x > width) n.dx *= -1;
+      if (n.y < 0 || n.y > height) n.dy *= -1;
+    });
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+</script>
+
+{% endblock %}
