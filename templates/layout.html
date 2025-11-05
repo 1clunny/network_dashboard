@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sentinel Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#0B0F19',
+            primary: '#2563EB',
+            accent: '#00C6FF'
+          },
+          boxShadow: {
+            glow: '0 0 25px rgba(0,198,255,0.2)',
+            innerGlow: 'inset 0 0 20px rgba(0,198,255,0.15)'
+          },
+          borderRadius: {
+            xl: '1rem',
+            '2xl': '1.5rem'
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      background: radial-gradient(circle at top left, #0b0f19, #060910);
+      background-attachment: fixed;
+    }
+    .sidebar {
+      transition: transform 0.3s ease, opacity 0.2s ease;
+    }
+    .sidebar.hidden {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+  </style>
+</head>
+
+<body class="text-gray-100 min-h-screen flex bg-bg">
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar fixed md:static z-50 w-64 md:w-64 bg-gray-900/50 backdrop-blur-xl border-r border-gray-800 flex flex-col items-start p-4 space-y-8 shadow-glow h-full">
+    <div class="flex items-center justify-between w-full">
+      <div class="flex items-center gap-3">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="w-10 h-10 rounded-xl" alt="Sentinel Logo" />
+        <span class="text-xl font-bold bg-gradient-to-r from-accent to-blue-500 bg-clip-text text-transparent">SENTINEL</span>
+      </div>
+      <button id="closeMenu" class="md:hidden p-2 hover:bg-gray-800 rounded-lg transition">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <nav class="flex flex-col space-y-3 w-full mt-4">
+      <a href="/" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/60 transition group">
+        <i data-lucide="layout-dashboard" class="w-5 h-5 text-accent group-hover:scale-110 transition"></i>
+        <span class="text-sm font-medium">Dashboard</span>
+      </a>
+      <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/60 transition group">
+        <i data-lucide="wifi" class="w-5 h-5 text-blue-400 group-hover:scale-110 transition"></i>
+        <span class="text-sm font-medium">Networks</span>
+      </a>
+      <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/60 transition group">
+        <i data-lucide="shield" class="w-5 h-5 text-green-400 group-hover:scale-110 transition"></i>
+        <span class="text-sm font-medium">Security</span>
+      </a>
+      <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/60 transition group">
+        <i data-lucide="settings" class="w-5 h-5 text-gray-400 group-hover:scale-110 transition"></i>
+        <span class="text-sm font-medium">Settings</span>
+      </a>
+    </nav>
+
+    <div class="mt-auto w-full">
+      <button class="px-4 py-2 bg-gradient-to-r from-blue-600 to-accent rounded-xl font-semibold text-white hover:opacity-90 transition shadow-glow w-full">
+        Run Scan
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 p-8 md:ml-0 ml-0">
+    <header class="flex items-center justify-between mb-8 md:hidden">
+      <button id="openMenu" class="p-2 bg-gray-900/60 rounded-lg border border-gray-800">
+        <i data-lucide="menu"></i>
+      </button>
+      <h1 class="text-lg font-semibold text-accent">Sentinel</h1>
+    </header>
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    lucide.createIcons();
+    const sidebar = document.getElementById('sidebar');
+    const openMenu = document.getElementById('openMenu');
+    const closeMenu = document.getElementById('closeMenu');
+    openMenu?.addEventListener('click', () => sidebar.classList.remove('hidden'));
+    closeMenu?.addEventListener('click', () => sidebar.classList.add('hidden'));
+  </script>
+  <script>
+  tailwind.config = {
+    safelist: ['text-red-500', 'text-yellow-400', 'text-green-400'],
+    theme: {
+      extend: {
+        colors: {
+          bg: '#0B0F19',
+          primary: '#2563EB',
+          accent: '#00C6FF'
+        },
+        boxShadow: {
+          glow: '0 0 25px rgba(0,198,255,0.2)',
+          innerGlow: 'inset 0 0 20px rgba(0,198,255,0.15)'
+        },
+        borderRadius: {
+          xl: '1rem',
+          '2xl': '1.5rem'
+        }
+      }
+    }
+  }
+</script>
+</body>
+</html>
