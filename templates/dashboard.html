@@ -1,25 +1,12 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<!-- STAT CARDS -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-  <div class="card group">
-    <h3>Active Devices</h3>
-    <p id="devicesCount">12</p>
-  </div>
-
-  <div class="card group">
-    <h3>Open Ports</h3>
-    <p id="openPorts">38</p>
-  </div>
-
-  <div class="card group">
-    <h3>Network Risk</h3>
-    <p id="riskLevel" class="text-green-400">Low</p>
-  </div>
+  <div class="card"><h3>Active Devices</h3><p id="devicesCount">12</p></div>
+  <div class="card"><h3>Open Ports</h3><p id="openPorts">38</p></div>
+  <div class="card"><h3>Network Risk</h3><p id="riskLevel" class="text-green-400">Low</p></div>
 </div>
 
-<!-- DEVICES TABLE -->
 <div class="bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-gray-800 p-6 shadow-inner">
   <h2 class="text-lg font-semibold text-accent mb-4 flex items-center gap-2">
     <i data-lucide="cpu"></i> Devices
@@ -32,22 +19,10 @@
         <th class="py-3">Status</th>
       </tr>
     </thead>
-    <tbody id="deviceTable">
-      <tr class="hover:bg-gray-800/40 transition">
-        <td class="py-3">192.168.1.1</td>
-        <td>router.local</td>
-        <td class="text-green-400">Online</td>
-      </tr>
-      <tr class="hover:bg-gray-800/40 transition">
-        <td class="py-3">192.168.1.23</td>
-        <td>laptop.local</td>
-        <td class="text-green-400">Online</td>
-      </tr>
-      <tr class="hover:bg-gray-800/40 transition">
-        <td class="py-3">192.168.1.45</td>
-        <td>phone.local</td>
-        <td class="text-yellow-400">Idle</td>
-      </tr>
+    <tbody>
+      <tr class="hover:bg-gray-800/40 transition"><td class="py-3">192.168.1.1</td><td>router.local</td><td class="text-green-400">Online</td></tr>
+      <tr class="hover:bg-gray-800/40 transition"><td class="py-3">192.168.1.23</td><td>laptop.local</td><td class="text-green-400">Online</td></tr>
+      <tr class="hover:bg-gray-800/40 transition"><td class="py-3">192.168.1.45</td><td>phone.local</td><td class="text-yellow-400">Idle</td></tr>
     </tbody>
   </table>
 </div>
@@ -63,7 +38,6 @@
     transition: all 0.35s ease;
     transform-style: preserve-3d;
   }
-
   .card:hover {
     transform: translateY(-8px) scale(1.03);
     border-color: rgba(0,198,255,0.3);
@@ -71,14 +45,12 @@
                 0 0 35px rgba(0,198,255,0.2),
                 inset 0 0 15px rgba(0,198,255,0.1);
   }
-
   .card h3 {
     color: #9ca3af;
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
     letter-spacing: 0.05em;
   }
-
   .card p {
     font-size: 2.6rem;
     font-weight: bold;
@@ -86,41 +58,9 @@
     animation: pulse 3s infinite;
     text-shadow: 0 0 8px rgba(0,198,255,0.4);
   }
-
   @keyframes pulse {
     0%, 100% { opacity: 1; text-shadow: 0 0 8px rgba(0,198,255,0.5); }
     50% { opacity: 0.8; text-shadow: 0 0 20px rgba(0,198,255,0.9); }
-  }
-</style>
-<style>
-  .card {
-    background: linear-gradient(145deg, rgba(13,17,28,0.8), rgba(5,7,11,0.8));
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 1.2rem;
-    padding: 1.5rem;
-    text-align: center;
-    box-shadow: 0 0 10px rgba(0,198,255,0.1);
-    transition: all 0.3s ease;
-  }
-  .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 0 25px rgba(0,198,255,0.25);
-  }
-  .card h3 {
-    color: #9ca3af;
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-    letter-spacing: 0.05em;
-  }
-  .card p {
-    font-size: 2.5rem;
-    font-weight: bold;
-    transition: all 0.5s ease;
-    animation: pulse 3s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; text-shadow: 0 0 10px rgba(0,198,255,0.4); }
-    50% { opacity: 0.7; text-shadow: 0 0 20px rgba(0,198,255,0.8); }
   }
 </style>
 
@@ -130,7 +70,6 @@
     const ports = document.getElementById("openPorts");
     const risk = document.getElementById("riskLevel");
 
-    // Random fake values
     const deviceNum = Math.floor(10 + Math.random() * 5);
     const portNum = Math.floor(30 + Math.random() * 15);
     const riskText = ["Low", "Medium", "High"][Math.floor(Math.random() * 3)];
@@ -139,7 +78,6 @@
     ports.textContent = portNum;
     risk.textContent = riskText;
 
-    // Dynamic colors with smooth transition
     risk.className =
       "text-3xl font-bold transition-all duration-500 " +
       (riskText === "High"
