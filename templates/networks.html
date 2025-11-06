@@ -51,16 +51,17 @@ function normalizeAnimated() {
   const w = canvas.clientWidth || canvas.offsetWidth;
   const h = canvas.clientHeight || canvas.offsetHeight;
   devices.forEach(d => {
+    // establish or preserve normalized ratios for position
     if (d._rx === undefined || d._ry === undefined) {
       d._rx = (d.x !== undefined) ? (d.x / w) : 0.5;
       d._ry = (d.y !== undefined) ? (d.y / h) : 0.5;
     }
-    // speeds become normalized per-frame ratios
+    // speeds become normalized per-frame ratios (recompute on each normalize so resize adjusts velocities)
     d._rdx = (d.dx !== undefined) ? (d.dx / w) : 0;
     d._rdy = (d.dy !== undefined) ? (d.dy / h) : 0;
-    // compute current display coords
-    d.x = d._rx * w;
-    d.y = d._ry * h;
+    // compute current display coords immediately so the UI updates during resize
+    d.x = (d._rx || 0.5) * w;
+    d.y = (d._ry || 0.5) * h;
   });
 }
 
@@ -77,19 +78,33 @@ function resizeCanvas() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   // On resize, preserve normalized positions and recompute speeds
   normalizeAnimated();
+  // also render one immediate frame so devices update during resize
+  renderAnimatedFrame();
 }
 
 // Throttle resize with rAF to avoid repeated heavy work
 let resizeScheduled = false;
-window.addEventListener("resize", () => {
+function scheduleResize() {
   if (!resizeScheduled) {
     resizeScheduled = true;
     requestAnimationFrame(() => { resizeCanvas(); resizeScheduled = false; });
   }
-});
+}
+window.addEventListener("resize", scheduleResize);
 
 // initial setup
 resizeCanvas();
+
+// Use ResizeObserver for more reliable size updates while the window is being dragged/resized
+if (typeof ResizeObserver !== 'undefined') {
+  const ro = new ResizeObserver(() => {
+    scheduleResize();
+    // also force an immediate single-frame render so devices reposition during drag
+    renderAnimatedFrame();
+  });
+  // observe the canvas itself so actual drawing area changes trigger updates
+  ro.observe(canvas);
+}
 
 // Draw a single device
 function drawDevice(ctx, device, radius = 10, glow = true) {
@@ -113,8 +128,8 @@ function drawDevice(ctx, device, radius = 10, glow = true) {
   ctx.fillText(device.name, x, y + radius + 12);
 }
 
-// Draw animated network
-function drawAnimated() {
+// Render a single frame of the animated network (no scheduling)
+function renderAnimatedFrame() {
   // clear using CSS pixel sizes since we've set a transform for DPR
   ctx.clearRect(0,0,canvas.clientWidth, canvas.clientHeight);
 
@@ -161,7 +176,11 @@ function drawAnimated() {
     e.opacity -= 0.02;
     if(e.opacity<=0) clickEffects.splice(i,1);
   }
+}
 
+// Main loop schedules frames
+function drawAnimated() {
+  renderAnimatedFrame();
   requestAnimationFrame(drawAnimated);
 }
 
