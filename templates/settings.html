@@ -118,12 +118,18 @@
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium mb-2">Theme</label>
-          <div class="flex gap-4">
-            <button class="flex-1 px-4 py-2 bg-accent text-black rounded-lg text-sm font-medium">
-              Dark
+          <div class="flex gap-4" id="themeButtonsContainer">
+            <button id="darkThemeBtn" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition theme-transition" data-theme="dark">
+              <span class="flex items-center justify-center gap-2">
+                <i data-lucide="moon" class="w-4 h-4"></i>
+                Dark
+              </span>
             </button>
-            <button class="flex-1 px-4 py-2 bg-gray-800/60 hover:bg-gray-800 rounded-lg text-sm font-medium transition">
-              Light
+            <button id="lightThemeBtn" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition theme-transition" data-theme="light">
+              <span class="flex items-center justify-center gap-2">
+                <i data-lucide="sun" class="w-4 h-4"></i>
+                Light
+              </span>
             </button>
           </div>
         </div>

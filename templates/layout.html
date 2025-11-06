@@ -9,16 +9,29 @@
   <script>
     tailwind.config = {
       safelist: ['text-red-500', 'text-yellow-400', 'text-green-400'],
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            bg: '#0B0F19',
+            // Dark theme colors
+            dark: {
+              bg: '#0B0F19',
+              surface: 'rgba(17, 24, 39, 0.6)',
+              border: 'rgba(75, 85, 99, 0.6)'
+            },
+            // Light theme colors
+            light: {
+              bg: '#F3F4F6',
+              surface: 'rgba(255, 255, 255, 0.8)',
+              border: 'rgba(209, 213, 219, 0.8)'
+            },
             primary: '#2563EB',
             accent: '#00C6FF'
           },
           boxShadow: {
             glow: '0 0 25px rgba(0,198,255,0.2)',
-            innerGlow: 'inset 0 0 20px rgba(0,198,255,0.15)'
+            innerGlow: 'inset 0 0 20px rgba(0,198,255,0.15)',
+            'light-glow': '0 0 25px rgba(37,99,235,0.1)'
           },
           borderRadius: {
             xl: '1rem',
@@ -31,23 +44,82 @@
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
+    :root {
+      --transition-duration: 0.3s;
+    }
+
     body {
+      transition: background-color var(--transition-duration) ease, color var(--transition-duration) ease;
+    }
+
+    body.dark {
       background: radial-gradient(circle at top left, #0b0f19, #060910);
-      background-attachment: fixed;
     }
+
+    body.light {
+      background: radial-gradient(circle at top left, #f3f4f6, #e5e7eb);
+    }
+
     .sidebar {
-      transition: transform 0.3s ease, opacity 0.2s ease;
+      transition: transform 0.3s ease, opacity 0.2s ease, background-color var(--transition-duration) ease, border-color var(--transition-duration) ease;
     }
+
     .sidebar.hidden {
       transform: translateX(-100%);
       opacity: 0;
     }
+
+    /* Theme transitions */
+    .theme-transition {
+      transition: background-color var(--transition-duration) ease,
+                  border-color var(--transition-duration) ease,
+                  color var(--transition-duration) ease,
+                  box-shadow var(--transition-duration) ease;
+    }
+
+    /* Light theme overrides */
+    body.light {
+      color: #1F2937;
+    }
+
+    body.light .sidebar {
+      background: rgba(255, 255, 255, 0.8);
+      border-color: rgba(209, 213, 219, 0.8);
+    }
+
+    body.light .bg-gray-900\/60 {
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    body.light .border-gray-800 {
+      border-color: rgba(209, 213, 219, 0.8);
+    }
+
+    body.light .text-gray-400 {
+      color: #4B5563;
+    }
+
+    body.light .text-gray-100 {
+      color: #1F2937;
+    }
   </style>
 </head>
 
-<body class="text-gray-100 min-h-screen flex bg-bg">
+<body class="text-gray-100 min-h-screen flex bg-bg dark theme-transition">
+  <!-- Theme Toggle -->
+  <button id="themeToggle" class="fixed top-4 right-4 z-50 p-2 rounded-full theme-transition bg-gray-900/50 backdrop-blur-xl border border-gray-800 hover:shadow-glow">
+    <!-- Sun icon -->
+    <svg id="sunIcon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+    <!-- Moon icon -->
+    <svg id="moonIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+    </svg>
+  </button>
+
   <!-- SIDEBAR -->
-  <aside id="sidebar" class="sidebar fixed md:static z-50 w-64 md:w-64 bg-gray-900/50 backdrop-blur-xl border-r border-gray-800 flex flex-col items-start p-4 space-y-8 shadow-glow min-h-screen">
+  <aside id="sidebar" class="sidebar fixed md:static z-50 w-64 md:w-64 bg-gray-900/50 backdrop-blur-xl border-r border-gray-800 flex flex-col items-start p-4 space-y-8 shadow-glow min-h-screen theme-transition">
     <div class="flex items-center justify-between w-full">
       <div class="flex items-center gap-3">
         <img src="{{ url_for('static', filename='logo.png') }}" class="w-10 h-10 rounded-xl" alt="Sentinel Logo" />
@@ -147,6 +219,90 @@
   <script>
     lucide.createIcons();
 
+    // Theme Management
+    const themeToggle = document.getElementById('themeToggle');
+    const sunIcon = document.getElementById('sunIcon');
+    const moonIcon = document.getElementById('moonIcon');
+    const body = document.body;
+
+    // Theme buttons in settings page
+    const darkThemeBtn = document.getElementById('darkThemeBtn');
+    const lightThemeBtn = document.getElementById('lightThemeBtn');
+
+    // Custom event for theme changes
+    const themeChangeEvent = new Event('themeChange');
+
+    // Function to update theme buttons in settings
+    function updateThemeButtons(isDark) {
+      if (darkThemeBtn && lightThemeBtn) {
+        // Dark theme button
+        if (isDark) {
+          darkThemeBtn.classList.add('bg-accent', 'text-black');
+          darkThemeBtn.classList.remove('bg-gray-800/60', 'hover:bg-gray-800');
+        } else {
+          darkThemeBtn.classList.remove('bg-accent', 'text-black');
+          darkThemeBtn.classList.add('bg-gray-800/60', 'hover:bg-gray-800');
+        }
+
+        // Light theme button
+        if (!isDark) {
+          lightThemeBtn.classList.add('bg-accent', 'text-black');
+          lightThemeBtn.classList.remove('bg-gray-800/60', 'hover:bg-gray-800');
+        } else {
+          lightThemeBtn.classList.remove('bg-accent', 'text-black');
+          lightThemeBtn.classList.add('bg-gray-800/60', 'hover:bg-gray-800');
+        }
+      }
+    }
+
+    // Function to set theme
+    function setTheme(isDark) {
+      if (isDark) {
+        body.classList.add('dark');
+        body.classList.remove('light');
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+      } else {
+        body.classList.add('light');
+        body.classList.remove('dark');
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+      }
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateThemeButtons(isDark);
+      document.dispatchEvent(themeChangeEvent);
+    }
+
+    // Initialize theme from localStorage or system preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      setTheme(savedTheme === 'dark');
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(prefersDark);
+    }
+
+    // Theme toggle click handler
+    themeToggle?.addEventListener('click', () => {
+      const isDark = body.classList.contains('dark');
+      setTheme(!isDark);
+    });
+
+    // Settings page theme buttons click handlers
+    darkThemeBtn?.addEventListener('click', () => setTheme(true));
+    lightThemeBtn?.addEventListener('click', () => setTheme(false));
+
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      if (!localStorage.getItem('theme')) {
+        setTheme(e.matches);
+      }
+    });
+
+    // Initialize theme buttons state
+    updateThemeButtons(body.classList.contains('dark'));
+
+    // Sidebar Management
     const sidebar = document.getElementById('sidebar');
     const openMenu = document.getElementById('openMenu');
     const closeMenu = document.getElementById('closeMenu');
