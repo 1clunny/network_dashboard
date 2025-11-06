@@ -372,6 +372,30 @@ function showDevicesByStatus(statusKey) {
   html += '</ul>';
   infoBox.innerHTML = html;
 }
+
+// Listen for global search events and show matching devices in the info panel
+document.addEventListener('globalSearch', (e) => {
+  const q = (e && e.detail && e.detail.query) ? e.detail.query.trim().toLowerCase() : '';
+  if (!q) {
+    infoBox.innerHTML = `<p>Click any node on the graph to view device details 👇</p>`;
+    return;
+  }
+  const matches = devices.filter(d => (d.ip || '').toLowerCase().includes(q) || (d.name || '').toLowerCase().includes(q));
+  if (!matches.length) {
+    infoBox.innerHTML = `<p class="text-sm text-gray-700 dark:text-gray-300">No results for "${q}"</p>`;
+    return;
+  }
+  let html = `<h4 class=\"text-gray-900 dark:text-white font-semibold\">Search Results (${matches.length})</h4>`;
+  html += '<ul class="text-gray-700 dark:text-gray-300 mt-2 space-y-1">';
+  matches.forEach(d => {
+    html += `<li class=\"flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-800/40 p-2 rounded-lg transition-all\">` +
+            `<span class=\"font-medium text-gray-900 dark:text-white\">${d.name}</span>` +
+            `<span class=\"text-gray-700 dark:text-gray-300 text-sm font-medium\">${d.ip}</span>` +
+            `</li>`;
+  });
+  html += '</ul>';
+  infoBox.innerHTML = html;
+});
 </script>
 
 {% endblock %}

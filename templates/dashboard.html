@@ -19,23 +19,23 @@
         <th class="py-3">Status</th>
       </tr>
     </thead>
-    <tbody class="text-gray-700 dark:text-gray-300">
-      <tr class="hover:bg-gray-800/40 dark:hover:bg-gray-800/40 hover:bg-gray-100/80 transition">
-        <td class="py-3">192.168.1.1</td>
-        <td class="font-medium">router.local</td>
-        <td class="text-green-600 dark:text-green-400">Online</td>
-      </tr>
-      <tr class="hover:bg-gray-800/40 dark:hover:bg-gray-800/40 hover:bg-gray-100/80 transition">
-        <td class="py-3">192.168.1.23</td>
-        <td class="font-medium">laptop.local</td>
-        <td class="text-green-600 dark:text-green-400">Online</td>
-      </tr>
-      <tr class="hover:bg-gray-800/40 dark:hover:bg-gray-800/40 hover:bg-gray-100/80 transition">
-        <td class="py-3">192.168.1.45</td>
-        <td class="font-medium">phone.local</td>
-        <td class="text-yellow-600 dark:text-yellow-400">Idle</td>
-      </tr>
-    </tbody>
+      <tbody id="devicesTable" class="text-gray-700 dark:text-gray-300">
+        <tr class="hover:bg-gray-800/40 transition" data-ip="192.168.1.1" data-host="router.local">
+          <td class="py-3">192.168.1.1</td>
+          <td class="font-medium">router.local</td>
+          <td class="text-green-400">Online</td>
+        </tr>
+        <tr class="hover:bg-gray-800/40 transition" data-ip="192.168.1.23" data-host="laptop.local">
+          <td class="py-3">192.168.1.23</td>
+          <td class="font-medium">laptop.local</td>
+          <td class="text-green-400">Online</td>
+        </tr>
+        <tr class="hover:bg-gray-800/40 transition" data-ip="192.168.1.45" data-host="phone.local">
+          <td class="py-3">192.168.1.45</td>
+          <td class="font-medium">phone.local</td>
+          <td class="text-yellow-400">Idle</td>
+        </tr>
+      </tbody>
   </table>
 </div>
 
@@ -115,6 +115,31 @@
         ? "text-yellow-400"
         : "text-green-400");
   }, 3000);
+</script>
+
+<script>
+  // Dashboard: listen for global search events and filter the devices table
+  document.addEventListener('globalSearch', (e) => {
+    const q = (e.detail && e.detail.query) ? e.detail.query.trim().toLowerCase() : '';
+    const tbody = document.getElementById('devicesTable');
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if (!q) {
+      rows.forEach(r => { r.style.display = ''; r.classList.remove('ring-2','ring-accent'); });
+      return;
+    }
+    rows.forEach(r => {
+      const ip = (r.dataset.ip || '').toLowerCase();
+      const host = (r.dataset.host || '').toLowerCase();
+      const match = ip.includes(q) || host.includes(q);
+      r.style.display = match ? '' : 'none';
+      if (match) {
+        r.classList.add('ring-2','ring-accent');
+      } else {
+        r.classList.remove('ring-2','ring-accent');
+      }
+    });
+  });
 </script>
 
 {% endblock %}
