@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="flex flex-col md:flex-row gap-6">
+  <!-- Network Graph -->
+  <div class="flex-1 bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-gray-800 p-6 relative overflow-hidden">
+    <h2 class="text-lg font-semibold text-accent mb-4">Network Map</h2>
+    <canvas id="networkCanvas" class="w-full h-[500px] rounded-2xl bg-gray-950"></canvas>
+  </div>
+
+  <!-- Sidebar Info -->
+  <div class="w-full md:w-80 bg-gray-900/70 backdrop-blur-xl rounded-2xl border border-gray-800 p-6">
+    <h3 class="text-accent font-semibold mb-4">Device Info</h3>
+    <div id="deviceInfo" class="text-gray-400 space-y-2">
+      <p>Select a device on the map 👇</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('networkCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+
+  const devices = [
+    { name: "Router", x: 300, y: 250, color: "#00C6FF", info: "Main Gateway - 192.168.1.1" },
+    { name: "Laptop", x: 150, y: 400, color: "#4ade80", info: "Laptop - 192.168.1.23" },
+    { name: "Phone", x: 480, y: 420, color: "#facc15", info: "Smartphone - 192.168.1.45" },
+    { name: "Camera", x: 420, y: 120, color: "#f87171", info: "Security Camera - 192.168.1.55" }
+  ];
+
+  const links = [
+    [0,1],[0,2],[0,3]
+  ];
+
+  function drawNetwork() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 2;
+    for (const [a, b] of links) {
+      ctx.beginPath();
+      ctx.moveTo(devices[a].x, devices[a].y);
+      ctx.lineTo(devices[b].x, devices[b].y);
+      ctx.stroke();
+    }
+
+    for (const device of devices) {
+      const gradient = ctx.createRadialGradient(device.x, device.y, 5, device.x, device.y, 25);
+      gradient.addColorStop(0, device.color);
+      gradient.addColorStop(1, "transparent");
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(device.x, device.y, 12, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  drawNetwork();
+
+  canvas.addEventListener("click", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    for (const device of devices) {
+      const dx = mouseX - device.x;
+      const dy = mouseY - device.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 20) {
+        document.getElementById("deviceInfo").innerHTML = `
+          <h4 class="text-white font-semibold">${device.name}</h4>
+          <p class="text-gray-400">${device.info}</p>
+        `;
+      }
+    }
+  });
+</script>
+{% endblock %}

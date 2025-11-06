@@ -5,6 +5,9 @@ app = Flask(__name__)
 @app.route("/")
 def dashboard():
     return render_template("dashboard.html")
+@app.route("/network")
+def network():
+    return render_template("network.html")
 
 @app.route("/networks")
 def networks():

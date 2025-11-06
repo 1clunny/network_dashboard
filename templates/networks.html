@@ -1,151 +1,159 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<h1 class="text-2xl font-bold text-accent mb-8 flex items-center gap-2">
-  <i data-lucide="wifi"></i> Network Visualization
-</h1>
+<div class="flex flex-col gap-6">
+  <!-- Animated Network -->
+  <div class="bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-gray-800 p-6 relative overflow-hidden">
+    <h2 class="text-lg font-semibold text-accent mb-4">Animated Network Map</h2>
+    <canvas id="animatedCanvas" class="w-full h-[400px] rounded-2xl bg-gray-950"></canvas>
+  </div>
 
-<!-- Glowing network visualization -->
-<div class="relative">
-  <canvas id="networkCanvas" class="w-full h-[70vh] bg-gray-900/50 rounded-2xl border border-gray-800 shadow-glow"></canvas>
+  <!-- Device List -->
+  <div class="bg-gray-900/70 backdrop-blur-xl rounded-2xl border border-gray-800 p-6">
+    <h2 class="text-lg font-semibold text-accent mb-4">Device Overview</h2>
+    <div id="deviceList" class="grid grid-cols-2 md:grid-cols-4 gap-4 text-gray-300">
+      <!-- Device buttons will go here -->
+    </div>
+  </div>
 
-  <!-- Tooltip -->
-  <div id="tooltip" class="absolute hidden px-4 py-2 bg-gray-800/90 text-sm text-gray-100 rounded-xl border border-gray-700 pointer-events-none backdrop-blur-xl">
-    <div id="tooltip-ip" class="font-semibold text-accent"></div>
-    <div id="tooltip-host" class="text-gray-400"></div>
-    <div id="tooltip-status" class="text-xs mt-1"></div>
+  <!-- Sidebar Info -->
+  <div class="w-full bg-gray-900/70 backdrop-blur-xl rounded-2xl border border-gray-800 p-6">
+    <h3 class="text-accent font-semibold mb-4">Device Info</h3>
+    <div id="deviceInfo" class="text-gray-400 space-y-2">
+      <p>Select a device on the map or from the list 👇</p>
+    </div>
   </div>
 </div>
 
-<style>
-  canvas {
-    display: block;
-    margin: auto;
-    background: radial-gradient(circle at center, rgba(13,17,28,0.85), rgba(5,7,11,0.95));
-  }
-
-  .shadow-glow {
-    box-shadow: 0 0 20px rgba(0, 198, 255, 0.1);
-  }
-
-  #tooltip {
-    transition: opacity 0.15s ease, transform 0.15s ease;
-    opacity: 0;
-  }
-  #tooltip.show {
-    opacity: 1;
-    transform: translateY(-4px);
-  }
-</style>
-
 <script>
-  const canvas = document.getElementById('networkCanvas');
-  const ctx = canvas.getContext('2d');
-  const tooltip = document.getElementById('tooltip');
-  const ipEl = document.getElementById('tooltip-ip');
-  const hostEl = document.getElementById('tooltip-host');
-  const statusEl = document.getElementById('tooltip-status');
+const canvas = document.getElementById("animatedCanvas");
+const ctx = canvas.getContext("2d");
+const infoBox = document.getElementById("deviceInfo");
+const deviceListContainer = document.getElementById("deviceList");
 
-  let width, height;
-  function resize() {
-    width = canvas.width = canvas.clientWidth;
-    height = canvas.height = canvas.clientHeight;
+// Devices
+const devices = [
+  { name: "Router", x: 300, y: 150, dx: 0.25, dy: 0.2, color: "#00C6FF", info: "Main Gateway • 192.168.1.1" },
+  { name: "Laptop", x: 150, y: 300, dx: -0.2, dy: 0.18, color: "#22c55e", info: "Laptop • 192.168.1.23" },
+  { name: "Phone", x: 480, y: 320, dx: 0.22, dy: -0.25, color: "#facc15", info: "Smartphone • 192.168.1.45" },
+  { name: "Camera", x: 420, y: 100, dx: -0.18, dy: 0.2, color: "#ef4444", info: "Security Cam • 192.168.1.55" },
+];
+
+const links = [
+  [0,1],[0,2],[0,3]
+];
+
+let selected = null;
+let clickEffects = [];
+
+// Make canvas responsive
+function resizeCanvas() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+// Draw a single device
+function drawDevice(ctx, device, radius = 10, glow = true) {
+  if(glow){
+    const gradient = ctx.createRadialGradient(device.x, device.y, 3, device.x, device.y, radius*2);
+    gradient.addColorStop(0, device.color);
+    gradient.addColorStop(1, "transparent");
+    ctx.fillStyle = gradient;
+  } else {
+    ctx.fillStyle = device.color;
   }
-  window.addEventListener('resize', resize);
-  resize();
+  ctx.beginPath();
+  ctx.arc(device.x, device.y, radius, 0, Math.PI*2);
+  ctx.fill();
 
-  // Fake device list for now (later we can link this to real scan data)
-  const devices = [
-    { ip: '192.168.1.1', host: 'router.local', status: 'Online', color: '#00C6FF' },
-    { ip: '192.168.1.12', host: 'desktop.local', status: 'Online', color: '#2563EB' },
-    { ip: '192.168.1.22', host: 'laptop.local', status: 'Idle', color: '#FFD700' },
-    { ip: '192.168.1.34', host: 'phone.local', status: 'Offline', color: '#FF4B4B' },
-    { ip: '192.168.1.45', host: 'tv.local', status: 'Online', color: '#00FF88' },
-    { ip: '192.168.1.67', host: 'tablet.local', status: 'Online', color: '#2563EB' }
-  ];
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "12px Inter, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(device.name, device.x, device.y + radius + 12);
+}
 
-  const nodes = devices.map(d => ({
-    ...d,
-    x: Math.random() * width,
-    y: Math.random() * height,
-    dx: (Math.random() - 0.5) * 0.6,
-    dy: (Math.random() - 0.5) * 0.6,
-    radius: 8
-  }));
+// Draw animated network
+function drawAnimated() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  function draw() {
-    ctx.clearRect(0, 0, width, height);
-    // draw connections
-    nodes.forEach((a, i) => {
-      nodes.forEach((b, j) => {
-        if (i < j) {
-          const dist = Math.hypot(a.x - b.x, a.y - b.y);
-          if (dist < 220) {
-            const alpha = 1 - dist / 220;
-            ctx.strokeStyle = `rgba(0,198,255,${alpha * 0.5})`;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.stroke();
-          }
-        }
-      });
-    });
-
-    // draw nodes
-    nodes.forEach(n => {
-      ctx.beginPath();
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = n.color;
-      ctx.fillStyle = n.color;
-      ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    });
-  }
-
-  function update() {
-    nodes.forEach(n => {
-      n.x += n.dx;
-      n.y += n.dy;
-      if (n.x < 0 || n.x > width) n.dx *= -1;
-      if (n.y < 0 || n.y > height) n.dy *= -1;
-    });
+  // Lines
+  for(const [a,b] of links){
+    const d1 = devices[a], d2 = devices[b];
+    const gradient = ctx.createLinearGradient(d1.x,d1.y,d2.x,d2.y);
+    gradient.addColorStop(0,"rgba(0,198,255,0.25)");
+    gradient.addColorStop(1,"rgba(0,198,255,0.05)");
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(d1.x,d1.y);
+    ctx.lineTo(d2.x,d2.y);
+    ctx.stroke();
   }
 
-  function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
+  // Move & draw devices
+  for(const device of devices){
+    device.x += device.dx;
+    device.y += device.dy;
+
+    if(device.x < 15 || device.x > canvas.width - 15) device.dx *= -1;
+    if(device.y < 15 || device.y > canvas.height - 15) device.dy *= -1;
+
+    drawDevice(ctx, device, 10);
   }
-  loop();
 
-  // Tooltip detection
-  canvas.addEventListener('mousemove', e => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  // Click effects
+  for(let i=clickEffects.length-1;i>=0;i--){
+    const e = clickEffects[i];
+    ctx.beginPath();
+    ctx.strokeStyle = e.color+"88";
+    ctx.lineWidth = 2;
+    ctx.arc(e.x,e.y,e.radius,0,Math.PI*2);
+    ctx.stroke();
+    e.radius += 2;
+    e.opacity -= 0.02;
+    if(e.opacity<=0) clickEffects.splice(i,1);
+  }
 
-    let hovered = null;
-    nodes.forEach(n => {
-      const dist = Math.hypot(n.x - x, n.y - y);
-      if (dist < n.radius + 5) hovered = n;
-    });
+  requestAnimationFrame(drawAnimated);
+}
 
-    if (hovered) {
-      ipEl.textContent = hovered.ip;
-      hostEl.textContent = hovered.host;
-      statusEl.textContent = hovered.status;
-      tooltip.classList.add('show');
-      tooltip.style.left = `${x + 20}px`;
-      tooltip.style.top = `${y - 10}px`;
-      tooltip.classList.remove('hidden');
-    } else {
-      tooltip.classList.remove('show');
-      tooltip.classList.add('hidden');
+// Click handler for canvas
+canvas.addEventListener("click",(e)=>{
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  for(const device of devices){
+    const dx = mouseX - device.x, dy = mouseY - device.y;
+    if(Math.sqrt(dx*dx + dy*dy) < 12){
+      selected = device;
+      infoBox.innerHTML = `<p><strong>${device.name}</strong></p><p>${device.info}</p>`;
+      clickEffects.push({x:device.x, y:device.y, radius:10, color:device.color, opacity:1});
+      break;
     }
+  }
+});
+
+// Build static device list
+function buildDeviceList(){
+  deviceListContainer.innerHTML = "";
+  devices.forEach((d,i)=>{
+    const btn = document.createElement("button");
+    btn.className = "bg-gray-800 hover:bg-gray-700 rounded-lg p-2 text-left cursor-pointer transition-colors";
+    btn.innerHTML = `<span class="font-semibold">${d.name}</span><br><span class="text-sm text-gray-400">${d.info}</span>`;
+    btn.addEventListener("click",()=>{
+      selected=d;
+      infoBox.innerHTML = `<p><strong>${d.name}</strong></p><p>${d.info}</p>`;
+      clickEffects.push({x:d.x, y:d.y, radius:10, color:d.color, opacity:1});
+    });
+    deviceListContainer.appendChild(btn);
   });
+}
+
+buildDeviceList();
+drawAnimated();
 </script>
 
 {% endblock %}
