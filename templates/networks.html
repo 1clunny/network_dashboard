@@ -5,8 +5,9 @@
   <!-- Device Status Graph -->
   <div class="flex-1 bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-gray-800 p-6 relative overflow-hidden">
     <h2 class="text-lg font-semibold text-accent mb-4">Device Status Graph</h2>
-    <div id="radialWrap" class="mt-4 flex items-center justify-center">
+    <div id="radialWrap" class="mt-4 relative flex items-center justify-center">
       <svg id="radialSvg" viewBox="0 0 500 500" class="w-full h-auto max-h-[720px]"></svg>
+      <div id="radialTooltip" class="pointer-events-none absolute z-50 hidden bg-black text-white text-sm py-1 px-2 rounded-md shadow-lg" style="transform: translate(-50%, -120%);"></div>
     </div>
   </div>
 
@@ -25,12 +26,22 @@
 const infoBox = document.getElementById("deviceInfo");
 const svg = document.getElementById('radialSvg');
 
-// Devices with status
+// Devices with status (expanded list for better visualization)
 const devices = [
-  { name: "Router", status: "connected", ip: "192.168.1.1", color: "#00C6FF" },
-  { name: "Laptop", status: "connected", ip: "192.168.1.23", color: "#22c55e" },
-  { name: "Phone", status: "idle", ip: "192.168.1.45", color: "#facc15" },
-  { name: "Camera", status: "off", ip: "192.168.1.55", color: "#ef4444" },
+  { name: "Router", status: "connected", ip: "192.168.1.1", color: "#16a34a" },
+  { name: "Laptop A", status: "connected", ip: "192.168.1.23", color: "#22c55e" },
+  { name: "Laptop B", status: "connected", ip: "192.168.1.24", color: "#22c55e" },
+  { name: "Desktop A", status: "connected", ip: "192.168.1.25", color: "#059669" },
+  { name: "Phone A", status: "connected", ip: "192.168.1.45", color: "#10b981" },
+  { name: "Tablet", status: "idle", ip: "192.168.1.46", color: "#facc15" },
+  { name: "Phone B", status: "idle", ip: "192.168.1.47", color: "#f59e0b" },
+  { name: "Printer", status: "idle", ip: "192.168.1.60", color: "#fbbf24" },
+  { name: "Camera 1", status: "off", ip: "192.168.1.55", color: "#ef4444" },
+  { name: "Camera 2", status: "off", ip: "192.168.1.56", color: "#dc2626" },
+  { name: "IoT Sensor", status: "connected", ip: "192.168.1.70", color: "#34d399" },
+  { name: "NAS", status: "connected", ip: "192.168.1.90", color: "#059669" },
+  { name: "Guest Phone", status: "idle", ip: "192.168.1.120", color: "#f59e0b" },
+  { name: "Smart Light", status: "off", ip: "192.168.1.200", color: "#ef4444" }
 ];
 
 function showDevice(d) {
@@ -39,6 +50,25 @@ function showDevice(d) {
     <h4 class="text-white font-semibold mt-2">${d.name}</h4>
     <p class="text-gray-400">${d.ip}</p>
   `;
+}
+
+// tooltip helpers for radial chart nodes
+const tooltipEl = document.getElementById('radialTooltip');
+const radialWrap = document.getElementById('radialWrap');
+function showTooltip(ev, text) {
+  if (!tooltipEl) return;
+  tooltipEl.textContent = text;
+  tooltipEl.style.display = 'block';
+  // position relative to radialWrap
+  const rect = radialWrap.getBoundingClientRect();
+  const x = ev.clientX - rect.left;
+  const y = ev.clientY - rect.top;
+  tooltipEl.style.left = x + 'px';
+  tooltipEl.style.top = (y - 12) + 'px';
+}
+function hideTooltip() {
+  if (!tooltipEl) return;
+  tooltipEl.style.display = 'none';
 }
 
 // Radial donut chart renderer
@@ -70,10 +100,32 @@ function renderRadialChart(progress = 1) {
   const r = 120;
   const ringWidth = 120;
 
+  // defs: gradients and shadow
+  const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+  const shadow = document.createElementNS('http://www.w3.org/2000/svg','filter');
+  shadow.setAttribute('id','dropShadow');
+  shadow.innerHTML = `<feGaussianBlur stdDeviation="4" result="blur"/><feOffset in="blur" dx="0" dy="4" result="offset"/><feMerge><feMergeNode in="offset"/><feMergeNode in="SourceGraphic"/></feMerge>`;
+  defs.appendChild(shadow);
+
+  // gradients for statuses
+  const gConnected = document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+  gConnected.setAttribute('id','gradConnected'); gConnected.setAttribute('x1','0%'); gConnected.setAttribute('x2','100%');
+  gConnected.innerHTML = `<stop offset="0%" stop-color="#22c55e" stop-opacity="0.95"/><stop offset="100%" stop-color="#10b981" stop-opacity="0.95"/>`;
+  defs.appendChild(gConnected);
+  const gIdle = document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+  gIdle.setAttribute('id','gradIdle'); gIdle.innerHTML = `<stop offset="0%" stop-color="#facc15"/><stop offset="100%" stop-color="#f59e0b"/>`;
+  defs.appendChild(gIdle);
+  const gOff = document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+  gOff.setAttribute('id','gradOff'); gOff.innerHTML = `<stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#dc2626"/>`;
+  defs.appendChild(gOff);
+  svg.appendChild(defs);
+  // Use a modern system/Inter fallback font for SVG text
+  try { svg.style.fontFamily = 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif'; } catch(e) {}
+
   const statuses = [
-    { key: 'connected', color: '#22c55e' },
-    { key: 'idle', color: '#facc15' },
-    { key: 'off', color: '#ef4444' }
+    { key: 'connected', color: 'url(#gradConnected)', base: '#22c55e' },
+    { key: 'idle', color: 'url(#gradIdle)', base: '#facc15' },
+    { key: 'off', color: 'url(#gradOff)', base: '#ef4444' }
   ];
 
   const counts = statuses.map(s => devices.filter(d => d.status === s.key).length);
@@ -88,17 +140,17 @@ function renderRadialChart(progress = 1) {
     if (pct <= 0) { angleStart += fullAngle; return; }
     const start = angleStart;
     const end = angleStart + angle;
-    // draw sector
+    // draw sector (full pie)
     const path = document.createElementNS('http://www.w3.org/2000/svg','path');
     path.setAttribute('d', describeSector(cx, cy, r + ringWidth/2, start, end));
     path.setAttribute('fill', s.color);
-    path.setAttribute('opacity', '0.95');
+    path.setAttribute('filter', 'url(#dropShadow)');
+    path.setAttribute('opacity', '0.98');
     path.style.cursor = 'pointer';
     // hover effect
     path.addEventListener('mouseenter', () => path.setAttribute('opacity','1'));
-    path.addEventListener('mouseleave', () => path.setAttribute('opacity','0.95'));
+    path.addEventListener('mouseleave', () => path.setAttribute('opacity','0.98'));
     path.addEventListener('click', () => {
-      // focus first device in this segment
       const gd = devices.find(d => d.status === s.key);
       if (gd) showDevice(gd);
     });
@@ -106,11 +158,11 @@ function renderRadialChart(progress = 1) {
 
     // label percent at middle of full span (use fullAngle to place percent for readability)
     const mid = start + fullAngle/2;
-    const labelPos = polarToCartesian(cx, cy, r - 6, mid);
+    const labelPos = polarToCartesian(cx, cy, r - 20, mid);
     const text = document.createElementNS('http://www.w3.org/2000/svg','text');
     text.setAttribute('x', labelPos.x); text.setAttribute('y', labelPos.y);
-    // user asked for darker/bolder letters
-    text.setAttribute('fill','#000'); text.setAttribute('font-size','12'); text.setAttribute('font-weight','700'); text.setAttribute('text-anchor','middle');
+    // darker/bolder letters
+    text.setAttribute('fill','#0b1220'); text.setAttribute('font-size','13'); text.setAttribute('font-weight','800'); text.setAttribute('text-anchor','middle');
     text.textContent = `${Math.round(pct*100)}%`;
     svg.appendChild(text);
 
@@ -118,20 +170,30 @@ function renderRadialChart(progress = 1) {
     const groupDevices = devices.filter(d => d.status === s.key);
     groupDevices.forEach((d,i) => {
       const slotAngle = start + (fullAngle * (i + 0.5) / Math.max(1, groupDevices.length));
-      const nodePos = polarToCartesian(cx, cy, r + ringWidth, slotAngle);
+      // place nodes inside the filled sector (closer to the middle of the sector)
+      const nodeRadius = r + Math.round(ringWidth/4); // inside the pie (not outside)
+      const nodePos = polarToCartesian(cx, cy, nodeRadius, slotAngle);
       const node = document.createElementNS('http://www.w3.org/2000/svg','circle');
       node.setAttribute('cx', nodePos.x); node.setAttribute('cy', nodePos.y); node.setAttribute('r', 8);
       node.setAttribute('fill', d.color);
-      node.setAttribute('stroke','#000'); node.setAttribute('stroke-width','1');
-      node.style.cursor = 'pointer';
+      node.setAttribute('stroke','#0b1220'); node.setAttribute('stroke-width','0.8');
+      // subtle drop-shadow via filter
+      node.setAttribute('filter','url(#dropShadow)');
+      // interaction
       node.addEventListener('click', () => showDevice(d));
-      node.addEventListener('mouseenter', () => node.setAttribute('r', 10));
-      node.addEventListener('mouseleave', () => node.setAttribute('r', 8));
+      node.addEventListener('mouseenter', (ev) => {
+        node.setAttribute('r', 11);
+        showTooltip(ev, `${d.name} — ${d.status}`);
+      });
+      node.addEventListener('mousemove', (ev) => showTooltip(ev, `${d.name} — ${d.status}`));
+      node.addEventListener('mouseleave', () => { node.setAttribute('r', 8); hideTooltip(); });
       svg.appendChild(node);
+
+      // label: place just a bit inward from the node so it sits inside the sector
+      const labelPos = polarToCartesian(cx, cy, nodeRadius - 18, slotAngle);
       const label = document.createElementNS('http://www.w3.org/2000/svg','text');
-      const lp = polarToCartesian(cx, cy, r + ringWidth + 28, slotAngle);
-      label.setAttribute('x', lp.x); label.setAttribute('y', lp.y);
-      label.setAttribute('fill','#000'); label.setAttribute('font-size','12'); label.setAttribute('text-anchor','middle');
+      label.setAttribute('x', labelPos.x); label.setAttribute('y', labelPos.y + 4); // slight vertical nudge
+      label.setAttribute('fill','#0b1220'); label.setAttribute('font-size','11'); label.setAttribute('font-weight','600'); label.setAttribute('text-anchor','middle');
       label.textContent = d.name;
       svg.appendChild(label);
     });
@@ -142,7 +204,7 @@ function renderRadialChart(progress = 1) {
   // center label
   const centerText = document.createElementNS('http://www.w3.org/2000/svg','text');
   centerText.setAttribute('x', cx); centerText.setAttribute('y', cy + 6);
-  centerText.setAttribute('fill','#000'); centerText.setAttribute('font-size','18'); centerText.setAttribute('font-weight','700'); centerText.setAttribute('text-anchor','middle');
+  centerText.setAttribute('fill','#0b1220'); centerText.setAttribute('font-size','18'); centerText.setAttribute('font-weight','800'); centerText.setAttribute('text-anchor','middle');
   centerText.textContent = total + ' Devices';
   svg.appendChild(centerText);
 }
