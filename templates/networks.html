@@ -5,29 +5,25 @@
   <!-- Device Status Graph -->
   <div class="flex-1 bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-gray-800 p-6 relative overflow-hidden">
     <h2 class="text-lg font-semibold text-accent mb-4">Device Status Graph</h2>
-    <div id="statusGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4"></div>
-  </div>
-
-  <!-- Device List -->
-  <div class="bg-gray-900/70 backdrop-blur-xl rounded-2xl border border-gray-800 p-6">
-    <h2 class="text-lg font-semibold text-accent mb-4">Device Overview</h2>
-    <div id="deviceList" class="grid grid-cols-2 md:grid-cols-4 gap-4 text-gray-300">
-      <!-- Device buttons will go here -->
+    <div id="radialWrap" class="mt-4 flex items-center justify-center">
+      <svg id="radialSvg" viewBox="0 0 500 500" class="w-full h-auto max-h-[720px]"></svg>
     </div>
   </div>
+
+  <!-- (Device Overview removed to make chart larger) -->
 
   <!-- Sidebar Info -->
   <div class="w-full md:w-80 bg-gray-900/70 backdrop-blur-xl rounded-2xl border border-gray-800 p-6 self-stretch h-full">
     <h3 class="text-accent font-semibold mb-4">Device Info</h3>
     <div id="deviceInfo" class="text-gray-400 space-y-2">
-      <p>Select a device from the columns or from the list 👇</p>
+      <p>Click any node on the graph to view device details 👇</p>
     </div>
   </div>
 </div>
 
 <script>
 const infoBox = document.getElementById("deviceInfo");
-const deviceListContainer = document.getElementById("deviceList");
+const svg = document.getElementById('radialSvg');
 
 // Devices with status
 const devices = [
@@ -45,39 +41,128 @@ function showDevice(d) {
   `;
 }
 
-function buildStatusGrid() {
-  const container = document.getElementById('statusGrid');
-  container.innerHTML = '';
-  const statuses = ["connected", "idle", "off"];
-  statuses.forEach(s => {
-    const col = document.createElement('div');
-    col.className = 'bg-gray-900/30 p-4 rounded-lg min-h-[160px] flex flex-col';
-    col.innerHTML = `<h3 class="text-sm font-semibold text-accent capitalize">${s}</h3><div class="devices mt-3 flex flex-col gap-2"></div>`;
-    const list = col.querySelector('.devices');
-    devices.filter(d => d.status === s).forEach(d => {
-      const btn = document.createElement('button');
-      btn.className = 'flex items-center gap-3 p-2 bg-gray-800/50 hover:bg-gray-800 rounded-lg';
-      btn.innerHTML = `<span class="w-3 h-3 rounded-full" style="background:${d.color}"></span><span class="text-sm">${d.name}</span>`;
-      btn.addEventListener('click', () => showDevice(d));
-      list.appendChild(btn);
+// Radial donut chart renderer
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const a = (angleDeg - 90) * Math.PI / 180.0;
+  return { x: cx + (r * Math.cos(a)), y: cy + (r * Math.sin(a)) };
+}
+
+function describeArc(cx, cy, r, startAngle, endAngle) {
+  const start = polarToCartesian(cx, cy, r, endAngle);
+  const end = polarToCartesian(cx, cy, r, startAngle);
+  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+  return [`M ${start.x} ${start.y}`, `A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`].join(' ');
+}
+
+function describeSector(cx, cy, r, startAngle, endAngle) {
+  const start = polarToCartesian(cx, cy, r, endAngle);
+  const end = polarToCartesian(cx, cy, r, startAngle);
+  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+  // Move to center, line to start, arc to end, back to center
+  return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y} Z`;
+}
+
+function renderRadialChart(progress = 1) {
+  // clear
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const w = 500, h = 500;
+  const cx = w/2, cy = h/2;
+  const r = 120;
+  const ringWidth = 120;
+
+  const statuses = [
+    { key: 'connected', color: '#22c55e' },
+    { key: 'idle', color: '#facc15' },
+    { key: 'off', color: '#ef4444' }
+  ];
+
+  const counts = statuses.map(s => devices.filter(d => d.status === s.key).length);
+  const total = devices.length || 1;
+
+  // draw filled pie sectors (animated by progress)
+  let angleStart = 0;
+  statuses.forEach((s, idx) => {
+    const pct = counts[idx]/total;
+    const fullAngle = pct * 360;
+    const angle = fullAngle * progress; // animated portion
+    if (pct <= 0) { angleStart += fullAngle; return; }
+    const start = angleStart;
+    const end = angleStart + angle;
+    // draw sector
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', describeSector(cx, cy, r + ringWidth/2, start, end));
+    path.setAttribute('fill', s.color);
+    path.setAttribute('opacity', '0.95');
+    path.style.cursor = 'pointer';
+    // hover effect
+    path.addEventListener('mouseenter', () => path.setAttribute('opacity','1'));
+    path.addEventListener('mouseleave', () => path.setAttribute('opacity','0.95'));
+    path.addEventListener('click', () => {
+      // focus first device in this segment
+      const gd = devices.find(d => d.status === s.key);
+      if (gd) showDevice(gd);
     });
-    container.appendChild(col);
+    svg.appendChild(path);
+
+    // label percent at middle of full span (use fullAngle to place percent for readability)
+    const mid = start + fullAngle/2;
+    const labelPos = polarToCartesian(cx, cy, r - 6, mid);
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x', labelPos.x); text.setAttribute('y', labelPos.y);
+    // user asked for darker/bolder letters
+    text.setAttribute('fill','#000'); text.setAttribute('font-size','12'); text.setAttribute('font-weight','700'); text.setAttribute('text-anchor','middle');
+    text.textContent = `${Math.round(pct*100)}%`;
+    svg.appendChild(text);
+
+    // place devices for this status evenly within full span (always use full span positions)
+    const groupDevices = devices.filter(d => d.status === s.key);
+    groupDevices.forEach((d,i) => {
+      const slotAngle = start + (fullAngle * (i + 0.5) / Math.max(1, groupDevices.length));
+      const nodePos = polarToCartesian(cx, cy, r + ringWidth, slotAngle);
+      const node = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      node.setAttribute('cx', nodePos.x); node.setAttribute('cy', nodePos.y); node.setAttribute('r', 8);
+      node.setAttribute('fill', d.color);
+      node.setAttribute('stroke','#000'); node.setAttribute('stroke-width','1');
+      node.style.cursor = 'pointer';
+      node.addEventListener('click', () => showDevice(d));
+      node.addEventListener('mouseenter', () => node.setAttribute('r', 10));
+      node.addEventListener('mouseleave', () => node.setAttribute('r', 8));
+      svg.appendChild(node);
+      const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+      const lp = polarToCartesian(cx, cy, r + ringWidth + 28, slotAngle);
+      label.setAttribute('x', lp.x); label.setAttribute('y', lp.y);
+      label.setAttribute('fill','#000'); label.setAttribute('font-size','12'); label.setAttribute('text-anchor','middle');
+      label.textContent = d.name;
+      svg.appendChild(label);
+    });
+
+    angleStart += fullAngle;
   });
+
+  // center label
+  const centerText = document.createElementNS('http://www.w3.org/2000/svg','text');
+  centerText.setAttribute('x', cx); centerText.setAttribute('y', cy + 6);
+  centerText.setAttribute('fill','#000'); centerText.setAttribute('font-size','18'); centerText.setAttribute('font-weight','700'); centerText.setAttribute('text-anchor','middle');
+  centerText.textContent = total + ' Devices';
+  svg.appendChild(centerText);
 }
 
-function buildDeviceList() {
-  deviceListContainer.innerHTML = '';
-  devices.forEach(d => {
-    const btn = document.createElement('button');
-    btn.className = 'bg-gray-800 hover:bg-gray-700 rounded-lg p-2 text-left cursor-pointer transition-colors';
-    btn.innerHTML = `<span class="font-semibold">${d.name}</span><br><span class="text-sm text-gray-400">${d.ip}</span>`;
-    btn.addEventListener('click', () => showDevice(d));
-    deviceListContainer.appendChild(btn);
-  });
+// animate chart from 0->1
+function animateRadial(duration = 700) {
+  const start = performance.now();
+  function frame(now) {
+    const t = Math.min(1, (now - start) / duration);
+    // easeOutCubic
+    const p = 1 - Math.pow(1 - t, 3);
+    renderRadialChart(p);
+    if (t < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 }
 
-buildStatusGrid();
-buildDeviceList();
+// initial render and handlers
+animateRadial();
+window.addEventListener('resize', () => animateRadial(300));
 </script>
 
 {% endblock %}
