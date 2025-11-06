@@ -82,25 +82,121 @@
       color: #1F2937;
     }
 
+    /* Basic elements */
     body.light .sidebar {
-      background: rgba(255, 255, 255, 0.8);
-      border-color: rgba(209, 213, 219, 0.8);
+      background: rgba(255, 255, 255, 0.85);
+      border-color: rgba(209, 213, 219, 0.5);
+      box-shadow: 0 0 25px rgba(37,99,235,0.1);
     }
 
+    /* Background and borders */
     body.light .bg-gray-900\/60 {
-      background: rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.85);
     }
 
     body.light .border-gray-800 {
-      border-color: rgba(209, 213, 219, 0.8);
+      border-color: rgba(209, 213, 219, 0.5);
     }
 
+    /* Text colors */
     body.light .text-gray-400 {
-      color: #4B5563;
+      color: #6B7280;
     }
 
     body.light .text-gray-100 {
       color: #1F2937;
+    }
+
+    body.light .text-accent {
+      color: #2563EB;
+    }
+
+    /* Button and interactive elements */
+    body.light .bg-gray-800\/60 {
+      background: rgba(243, 244, 246, 0.8);
+    }
+
+    body.light .hover\:bg-gray-800:hover {
+      background: rgba(229, 231, 235, 0.9);
+    }
+
+    /* Card and container effects */
+    body.light .backdrop-blur-xl {
+      backdrop-filter: blur(20px) brightness(1.1);
+    }
+
+    /* Status colors */
+    body.light .bg-green-500\/10 {
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    body.light .bg-red-500\/10 {
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    body.light .bg-yellow-500\/10 {
+      background: rgba(245, 158, 11, 0.1);
+    }
+
+    body.light .bg-blue-500\/10 {
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    /* Border colors for status elements */
+    body.light .border-red-500\/20 {
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    body.light .border-green-500\/20 {
+      border-color: rgba(16, 185, 129, 0.2);
+    }
+
+    /* Shadow effects */
+    body.light .shadow-glow {
+      box-shadow: 0 0 25px rgba(37,99,235,0.1);
+    }
+
+    body.light .hover\:shadow-glow:hover {
+      box-shadow: 0 0 30px rgba(37,99,235,0.15);
+    }
+
+    /* Input and form elements */
+    body.light input, 
+    body.light select {
+      background: rgba(255, 255, 255, 0.8);
+      border-color: rgba(209, 213, 219, 0.8);
+    }
+
+    body.light input:focus,
+    body.light select:focus {
+      border-color: #2563EB;
+      box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
+    }
+
+    /* Progress bars and indicators */
+    body.light .scan-progress {
+      background: linear-gradient(90deg, #2563eb, #60a5fa);
+    }
+
+    /* Hover effects */
+    body.light .hover\:bg-gray-800\/60:hover {
+      background: rgba(243, 244, 246, 0.9);
+    }
+
+    /* Icons */
+    body.light [data-lucide] {
+      stroke-width: 1.5px;
+    }
+
+    /* Theme toggle button */
+    body.light #themeToggle {
+      background: rgba(255, 255, 255, 0.9);
+      border-color: rgba(209, 213, 219, 0.8);
+      color: #2563EB;
+    }
+
+    body.light #themeToggle:hover {
+      box-shadow: 0 0 15px rgba(37,99,235,0.2);
     }
   </style>
 </head>

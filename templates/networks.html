@@ -16,9 +16,9 @@
   <!-- (Device Overview removed to make chart larger) -->
 
   <!-- Sidebar Info -->
-  <div class="w-full md:w-80 bg-gray-900/70 backdrop-blur-xl rounded-2xl border border-gray-800 p-6 self-stretch h-full">
+  <div class="w-full md:w-80 dark:bg-gray-900/70 bg-white/90 backdrop-blur-xl rounded-2xl border dark:border-gray-800 border-gray-200 p-6 self-stretch h-full shadow-lg transition-all">
     <h3 class="text-accent font-semibold mb-4">Device Info</h3>
-    <div id="deviceInfo" class="text-gray-400 space-y-2">
+    <div id="deviceInfo" class="text-gray-700 dark:text-gray-300 space-y-2">
       <p>Click any node on the graph to view device details 👇</p>
     </div>
   </div>
@@ -72,11 +72,11 @@ const devices = [
   { name: "Smart Light", status: "off", ip: "192.168.1.200", color: "#ef4444" }
 ];
 
-function showDevice(d) {
+  function showDevice(d) {
   infoBox.innerHTML = `
-    <p class="text-sm text-gray-400">Status: <span class="font-semibold text-white">${d.status}</span></p>
-    <h4 class="text-white font-semibold mt-2">${d.name}</h4>
-    <p class="text-gray-400">${d.ip}</p>
+    <p class="text-sm text-gray-700 dark:text-gray-300">Status: <span class="font-semibold text-gray-900 dark:text-white">${d.status}</span></p>
+    <h4 class="text-gray-900 dark:text-white font-semibold mt-2">${d.name}</h4>
+    <p class="text-gray-700 dark:text-gray-300 font-medium">${d.ip}</p>
   `;
 }
 
@@ -361,13 +361,13 @@ function showDevicesByStatus(statusKey) {
   };
   const list = devices.filter(d => d.status === statusKey);
   if (!list.length) {
-    infoBox.innerHTML = `<p class="text-sm text-gray-400">No devices for <span class="font-semibold text-white">${mapping[statusKey]||statusKey}</span></p>`;
+    infoBox.innerHTML = `<p class="text-sm text-gray-700 dark:text-gray-300">No devices for <span class="font-semibold text-gray-900 dark:text-white">${mapping[statusKey]||statusKey}</span></p>`;
     return;
   }
-  let html = `<h4 class=\"text-white font-semibold\">${mapping[statusKey]||statusKey} (${list.length})</h4>`;
-  html += '<ul class="text-gray-400 mt-2 space-y-1">';
+  let html = `<h4 class=\"text-gray-900 dark:text-white font-semibold\">${mapping[statusKey]||statusKey} (${list.length})</h4>`;
+  html += '<ul class="text-gray-700 dark:text-gray-300 mt-2 space-y-1">';
   list.forEach(d => {
-    html += `<li class=\"flex justify-between items-center\"><span class=\"font-medium text-white\">${d.name}</span><span class=\"text-gray-400 text-sm\">${d.ip}</span></li>`;
+    html += `<li class=\"flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-800/40 p-2 rounded-lg transition-all\"><span class=\"font-medium text-gray-900 dark:text-white\">${d.name}</span><span class=\"text-gray-700 dark:text-gray-300 text-sm font-medium\">${d.ip}</span></li>`;
   });
   html += '</ul>';
   infoBox.innerHTML = html;
