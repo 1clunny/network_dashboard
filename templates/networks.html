@@ -92,6 +92,88 @@ function describeSector(cx, cy, r, startAngle, endAngle) {
   return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y} Z`;
 }
 
+// simple inline icon generator (returns an SVG <g> element)
+function getDeviceIcon(device, size = 22) {
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('width', size); g.setAttribute('height', size);
+  g.style.pointerEvents = 'auto'; // allow events
+  const name = (device.name || '').toLowerCase();
+  // helper to create shapes
+  const rect = (x,y,w,h,rx,fill,stroke) => {
+    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', w); r.setAttribute('height', h);
+    if (rx) { r.setAttribute('rx', rx); r.setAttribute('ry', rx); }
+    if (fill) r.setAttribute('fill', fill);
+    if (stroke) { r.setAttribute('stroke', stroke); r.setAttribute('stroke-width', 1); }
+    return r;
+  };
+  const circ = (cx_,cy_,r_,fill,stroke) => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx', cx_); c.setAttribute('cy', cy_); c.setAttribute('r', r_);
+    if (fill) c.setAttribute('fill', fill);
+    if (stroke) { c.setAttribute('stroke', stroke); c.setAttribute('stroke-width', 1); }
+    return c;
+  };
+
+  // scale factors for a 22px grid
+  const s = size / 22;
+  if (name.includes('phone') || name.includes('tablet')) {
+    // phone vs tablet: narrow phone, wider tablet
+    if (name.includes('tablet')) {
+      // tablet: larger rounded rectangle with small camera dot
+      g.appendChild(rect(1.5*s,1.5*s,19*s,19*s,3*s,'#ffffff',device.color));
+      g.appendChild(circ(17.5*s,3.5*s,1.2*s,device.color));
+    } else {
+      // phone: taller narrow rounded rectangle with a home button
+      g.appendChild(rect(5*s,1.8*s,12*s,18.4*s,3*s,'#ffffff',device.color));
+      g.appendChild(circ(11*s,18*s,1.2*s,device.color));
+    }
+  } else if (name.includes('laptop') || name.includes('desktop') || name.includes('pc')) {
+    // laptop vs desktop
+    if (name.includes('laptop')) {
+      // laptop: screen + keyboard/base
+      g.appendChild(rect(1.5*s,3*s,19*s,12*s,2*s,'#ffffff',device.color));
+      g.appendChild(rect(4*s,15.8*s,14*s,2.8*s,1*s,'#f7fafc',device.color));
+    } else {
+      // desktop: monitor with stand and a small tower box
+      g.appendChild(rect(2.5*s,2.5*s,17*s,11.5*s,2*s,'#ffffff',device.color));
+      g.appendChild(rect(9*s,14.5*s,4*s,1.8*s,0.8*s,'#f7fafc',device.color));
+      g.appendChild(rect(1.8*s,4*s,3.6*s,9*s,1*s,'#ffffff',device.color));
+      g.appendChild(rect(1.8*s,4*s,3.6*s,9*s,1*s,'#ffffff',device.color));
+      // tower indicator lines
+      g.appendChild(rect(2.8*s,5.6*s,1.2*s,0.8*s,0.6*s,device.color));
+      g.appendChild(rect(2.8*s,7.6*s,1.2*s,0.8*s,0.6*s,device.color));
+    }
+  } else if (name.includes('camera')) {
+    // camera: rounded rect with lens circle
+    g.appendChild(rect(2*s,3*s,18*s,14*s,3*s,'#ffffff',device.color));
+    g.appendChild(circ(12*s,10*s,4*s,device.color,'#000'));
+  } else if (name.includes('router') || name.includes('nas') || name.includes('printer')) {
+    // box with small indicators
+    g.appendChild(rect(2*s,4*s,18*s,12*s,2*s,'#ffffff',device.color));
+    g.appendChild(circ(7*s,9*s,1.1*s,device.color));
+    g.appendChild(circ(10*s,9*s,1.1*s,device.color));
+    g.appendChild(circ(13*s,9*s,1.1*s,device.color));
+  } else if (name.includes('light') || name.includes('bulb')) {
+    // lightbulb icon: circle bulb + filament + base
+    g.appendChild(circ(11*s,8.5*s,6.2*s,'#ffffff',device.color));
+    const fil = document.createElementNS('http://www.w3.org/2000/svg','path');
+    fil.setAttribute('d', `M ${11*s-2.5*s} ${8.5*s} q ${2*s} ${-2*s} ${5*s} 0`);
+    fil.setAttribute('stroke', device.color); fil.setAttribute('fill','none'); fil.setAttribute('stroke-width',1.2);
+    g.appendChild(fil);
+    g.appendChild(rect(8.8*s,13.2*s,4.4*s,2.4*s,0.6*s,'#f7fafc',device.color));
+  } else if (name.includes('iot') || name.includes('sensor')) {
+    // small sensor: circle with dot
+    g.appendChild(circ(11*s,11*s,8*s,'#ffffff',device.color));
+    g.appendChild(circ(11*s,11*s,3*s,device.color));
+  } else {
+    // fallback: small rounded box
+    g.appendChild(rect(2*s,3*s,18*s,14*s,3*s,'#ffffff',device.color));
+  }
+
+  return g;
+}
+
 function renderRadialChart(progress = 1) {
   // clear
   while (svg.firstChild) svg.removeChild(svg.firstChild);
@@ -104,7 +186,9 @@ function renderRadialChart(progress = 1) {
   const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
   const shadow = document.createElementNS('http://www.w3.org/2000/svg','filter');
   shadow.setAttribute('id','dropShadow');
-  shadow.innerHTML = `<feGaussianBlur stdDeviation="4" result="blur"/><feOffset in="blur" dx="0" dy="4" result="offset"/><feMerge><feMergeNode in="offset"/><feMergeNode in="SourceGraphic"/></feMerge>`;
+  // enlarge filter region so blur doesn't get clipped and use feDropShadow for a softer circular shadow
+  shadow.setAttribute('x','-50%'); shadow.setAttribute('y','-50%'); shadow.setAttribute('width','200%'); shadow.setAttribute('height','200%');
+  shadow.innerHTML = `<feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.18"/>`;
   defs.appendChild(shadow);
 
   // gradients for statuses
@@ -150,10 +234,7 @@ function renderRadialChart(progress = 1) {
     // hover effect
     path.addEventListener('mouseenter', () => path.setAttribute('opacity','1'));
     path.addEventListener('mouseleave', () => path.setAttribute('opacity','0.98'));
-    path.addEventListener('click', () => {
-      const gd = devices.find(d => d.status === s.key);
-      if (gd) showDevice(gd);
-    });
+    path.addEventListener('click', () => showDevicesByStatus(s.key));
     svg.appendChild(path);
 
     // label percent at middle of full span (use fullAngle to place percent for readability)
@@ -170,32 +251,25 @@ function renderRadialChart(progress = 1) {
     const groupDevices = devices.filter(d => d.status === s.key);
     groupDevices.forEach((d,i) => {
       const slotAngle = start + (fullAngle * (i + 0.5) / Math.max(1, groupDevices.length));
-      // place nodes inside the filled sector (closer to the middle of the sector)
-      const nodeRadius = r + Math.round(ringWidth/4); // inside the pie (not outside)
+      // place chips inside the filled sector (closer to the middle of the sector)
+      const nodeRadius = r + Math.round(ringWidth/4); // inside the pie
       const nodePos = polarToCartesian(cx, cy, nodeRadius, slotAngle);
-      const node = document.createElementNS('http://www.w3.org/2000/svg','circle');
-      node.setAttribute('cx', nodePos.x); node.setAttribute('cy', nodePos.y); node.setAttribute('r', 8);
-      node.setAttribute('fill', d.color);
-      node.setAttribute('stroke','#0b1220'); node.setAttribute('stroke-width','0.8');
-      // subtle drop-shadow via filter
-      node.setAttribute('filter','url(#dropShadow)');
-      // interaction
-      node.addEventListener('click', () => showDevice(d));
-      node.addEventListener('mouseenter', (ev) => {
-        node.setAttribute('r', 11);
-        showTooltip(ev, `${d.name} — ${d.status}`);
-      });
-      node.addEventListener('mousemove', (ev) => showTooltip(ev, `${d.name} — ${d.status}`));
-      node.addEventListener('mouseleave', () => { node.setAttribute('r', 8); hideTooltip(); });
-      svg.appendChild(node);
 
-      // label: place just a bit inward from the node so it sits inside the sector
-      const labelPos = polarToCartesian(cx, cy, nodeRadius - 18, slotAngle);
-      const label = document.createElementNS('http://www.w3.org/2000/svg','text');
-      label.setAttribute('x', labelPos.x); label.setAttribute('y', labelPos.y + 4); // slight vertical nudge
-      label.setAttribute('fill','#0b1220'); label.setAttribute('font-size','11'); label.setAttribute('font-weight','600'); label.setAttribute('text-anchor','middle');
-      label.textContent = d.name;
-      svg.appendChild(label);
+      // create an icon group and place it at nodePos
+      const iconSize = 28; // slightly larger so icons are comfortable
+      const icon = getDeviceIcon(d, iconSize);
+      // position the icon group so its center is at nodePos
+      const tx = nodePos.x - (iconSize/2);
+      const ty = nodePos.y - (iconSize/2);
+      icon.setAttribute('transform', `translate(${tx},${ty})`);
+      icon.style.cursor = 'pointer';
+      icon.setAttribute('filter','url(#dropShadow)');
+      // interactions
+      icon.addEventListener('click', () => showDevice(d));
+      icon.addEventListener('mouseenter', (ev) => { icon.setAttribute('transform', `translate(${tx},${ty-4})`); showTooltip(ev, `${d.name} — ${d.status}`); });
+      icon.addEventListener('mousemove', (ev) => showTooltip(ev, `${d.name} — ${d.status}`));
+      icon.addEventListener('mouseleave', () => { icon.setAttribute('transform', `translate(${tx},${ty})`); hideTooltip(); });
+      svg.appendChild(icon);
     });
 
     angleStart += fullAngle;
@@ -225,6 +299,27 @@ function animateRadial(duration = 700) {
 // initial render and handlers
 animateRadial();
 window.addEventListener('resize', () => animateRadial(300));
+
+// show a list of devices for a given status (used when clicking a sector)
+function showDevicesByStatus(statusKey) {
+  const mapping = {
+    connected: 'Devices — On',
+    idle: 'Devices — Idle',
+    off: 'Devices — Off'
+  };
+  const list = devices.filter(d => d.status === statusKey);
+  if (!list.length) {
+    infoBox.innerHTML = `<p class="text-sm text-gray-400">No devices for <span class="font-semibold text-white">${mapping[statusKey]||statusKey}</span></p>`;
+    return;
+  }
+  let html = `<h4 class=\"text-white font-semibold\">${mapping[statusKey]||statusKey} (${list.length})</h4>`;
+  html += '<ul class="text-gray-400 mt-2 space-y-1">';
+  list.forEach(d => {
+    html += `<li class=\"flex justify-between items-center\"><span class=\"font-medium text-white\">${d.name}</span><span class=\"text-gray-400 text-sm\">${d.ip}</span></li>`;
+  });
+  html += '</ul>';
+  infoBox.innerHTML = html;
+}
 </script>
 
 {% endblock %}
