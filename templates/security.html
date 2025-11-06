@@ -1,0 +1,114 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="flex flex-col gap-6 min-h-[calc(100vh-8rem)]">
+  <!-- Security Overview Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-gray-900/60 backdrop-blur-xl rounded-[28px] border border-gray-800 p-6 relative overflow-hidden group hover:shadow-glow transition">
+      <div class="absolute inset-0 bg-gradient-to-r from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold text-accent">Threat Level</h3>
+        <span class="text-green-400 bg-green-500/10 px-3 py-1 rounded-full text-sm font-medium">Low</span>
+      </div>
+      <p class="text-4xl font-bold mt-4">2</p>
+      <p class="text-gray-400 text-sm mt-1">Minor issues detected</p>
+    </div>
+
+    <div class="bg-gray-900/60 backdrop-blur-xl rounded-[28px] border border-gray-800 p-6 relative overflow-hidden group hover:shadow-glow transition">
+      <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold text-accent">Network Security</h3>
+        <span class="text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full text-sm font-medium">Protected</span>
+      </div>
+      <p class="text-4xl font-bold mt-4">94%</p>
+      <p class="text-gray-400 text-sm mt-1">Overall security score</p>
+    </div>
+
+    <div class="bg-gray-900/60 backdrop-blur-xl rounded-[28px] border border-gray-800 p-6 relative overflow-hidden group hover:shadow-glow transition">
+      <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold text-accent">Active Devices</h3>
+        <span class="text-yellow-400 bg-yellow-500/10 px-3 py-1 rounded-full text-sm font-medium">14 Connected</span>
+      </div>
+      <p class="text-4xl font-bold mt-4">6</p>
+      <p class="text-gray-400 text-sm mt-1">Need security updates</p>
+    </div>
+  </div>
+
+  <!-- Threat Monitor -->
+  <div class="flex-1 bg-gray-900/60 backdrop-blur-xl rounded-[28px] border border-gray-800 p-6 relative overflow-hidden">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-lg font-semibold text-accent">Threat Monitor</h2>
+      <div class="flex gap-2">
+        <button class="px-4 py-1.5 rounded-lg bg-gray-800/60 hover:bg-gray-800 text-sm font-medium transition">Last 24h</button>
+        <button class="px-4 py-1.5 rounded-lg bg-accent text-black text-sm font-medium hover:bg-accent/90 transition">View All</button>
+      </div>
+    </div>
+
+    <!-- Recent Threats List -->
+    <div class="space-y-4">
+      <div class="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl border border-gray-800/50 hover:bg-gray-800/50 transition cursor-pointer group">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+            <i data-lucide="shield-alert" class="w-5 h-5 text-red-400"></i>
+          </div>
+          <div>
+            <h4 class="font-medium">Unauthorized Access Attempt</h4>
+            <p class="text-sm text-gray-400">From IP: 192.168.1.45</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-6">
+          <span class="text-sm text-gray-400">2 min ago</span>
+          <button class="opacity-0 group-hover:opacity-100 transition px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 text-sm">Details</button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl border border-gray-800/50 hover:bg-gray-800/50 transition cursor-pointer group">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+            <i data-lucide="shield-question" class="w-5 h-5 text-yellow-400"></i>
+          </div>
+          <div>
+            <h4 class="font-medium">Outdated Firmware</h4>
+            <p class="text-sm text-gray-400">Router needs security update</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-6">
+          <span class="text-sm text-gray-400">15 min ago</span>
+          <button class="opacity-0 group-hover:opacity-100 transition px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 text-sm">Update</button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl border border-gray-800/50 hover:bg-gray-800/50 transition cursor-pointer group">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+            <i data-lucide="shield-check" class="w-5 h-5 text-green-400"></i>
+          </div>
+          <div>
+            <h4 class="font-medium">Threat Blocked</h4>
+            <p class="text-sm text-gray-400">Malicious connection blocked</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-6">
+          <span class="text-sm text-gray-400">1 hour ago</span>
+          <button class="opacity-0 group-hover:opacity-100 transition px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 text-sm">Details</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Security Tips -->
+    <div class="mt-8 p-4 rounded-xl bg-accent/5 border border-accent/10">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="lightbulb" class="w-5 h-5 text-accent"></i>
+        </div>
+        <div>
+          <h4 class="font-medium text-accent">Security Tip</h4>
+          <p class="text-sm text-gray-400 mt-1">Enable two-factor authentication on all your smart devices for an extra layer of security. This can prevent unauthorized access even if passwords are compromised.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

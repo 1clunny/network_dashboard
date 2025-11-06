@@ -13,5 +13,9 @@ def network():
 def networks():
     return render_template("networks.html")
 
+@app.route("/security")
+def security():
+    return render_template("security.html")
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

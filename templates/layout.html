@@ -47,7 +47,7 @@
 
 <body class="text-gray-100 min-h-screen flex bg-bg">
   <!-- SIDEBAR -->
-  <aside id="sidebar" class="sidebar fixed md:static z-50 w-64 md:w-64 bg-gray-900/50 backdrop-blur-xl border-r border-gray-800 flex flex-col items-start p-4 space-y-8 shadow-glow h-full">
+  <aside id="sidebar" class="sidebar fixed md:static z-50 w-64 md:w-64 bg-gray-900/50 backdrop-blur-xl border-r border-gray-800 flex flex-col items-start p-4 space-y-8 shadow-glow min-h-screen">
     <div class="flex items-center justify-between w-full">
       <div class="flex items-center gap-3">
         <img src="{{ url_for('static', filename='logo.png') }}" class="w-10 h-10 rounded-xl" alt="Sentinel Logo" />
@@ -67,7 +67,7 @@
         <i data-lucide="wifi" class="w-5 h-5 text-blue-400 group-hover:scale-110 transition"></i>
         <span class="text-sm font-medium">Networks</span>
       </a>
-      <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/60 transition group">
+      <a href="/security" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/60 transition group">
         <i data-lucide="shield" class="w-5 h-5 text-green-400 group-hover:scale-110 transition"></i>
         <span class="text-sm font-medium">Security</span>
       </a>
