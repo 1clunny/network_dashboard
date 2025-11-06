@@ -30,7 +30,7 @@
             <p class="text-sm text-gray-400">Get notified about security threats</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" class="sr-only peer" checked>
+            <input id="notifySecurity" type="checkbox" class="sr-only peer" checked>
             <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
           </label>
         </div>
@@ -41,7 +41,7 @@
             <p class="text-sm text-gray-400">Notifications about device status</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" class="sr-only peer">
+            <input id="deviceUpdates" type="checkbox" class="sr-only peer">
             <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
           </label>
         </div>
@@ -52,7 +52,7 @@
             <p class="text-sm text-gray-400">Weekly security reports</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" class="sr-only peer" checked>
+            <input id="emailReports" type="checkbox" class="sr-only peer" checked>
             <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
           </label>
         </div>
@@ -66,7 +66,7 @@
         <div>
           <h4 class="font-medium mb-2">Two-Factor Authentication</h4>
           <p class="text-sm text-gray-400 mb-4">Add an extra layer of security to your account</p>
-          <button class="px-4 py-2 bg-gray-800/60 hover:bg-gray-800 rounded-lg text-sm font-medium transition">
+          <button id="enable2faBtn" class="px-4 py-2 bg-gray-800/60 hover:bg-gray-800 rounded-lg text-sm font-medium transition">
             Enable 2FA
           </button>
         </div>
@@ -74,7 +74,7 @@
         <div>
           <h4 class="font-medium mb-2">Change Password</h4>
           <p class="text-sm text-gray-400 mb-4">Update your password regularly for better security</p>
-          <button class="px-4 py-2 bg-gray-800/60 hover:bg-gray-800 rounded-lg text-sm font-medium transition">
+          <button id="changePasswordBtn" class="px-4 py-2 bg-gray-800/60 hover:bg-gray-800 rounded-lg text-sm font-medium transition">
             Update Password
           </button>
         </div>
@@ -87,7 +87,7 @@
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium mb-2">Scan Frequency</label>
-          <select class="w-full px-4 py-2 bg-gray-800/60 border border-gray-700 rounded-lg focus:border-accent focus:outline-none">
+          <select id="scanFrequency" class="w-full px-4 py-2 bg-gray-800/60 border border-gray-700 rounded-lg focus:border-accent focus:outline-none">
             <option>Every 6 hours</option>
             <option>Every 12 hours</option>
             <option>Every 24 hours</option>
@@ -98,13 +98,13 @@
         <div>
           <label class="block text-sm font-medium mb-2">Scan Intensity</label>
           <div class="flex gap-4">
-            <button class="flex-1 px-4 py-2 bg-gray-800/60 hover:bg-gray-800 rounded-lg text-sm font-medium transition">
+            <button type="button" data-intensity="Quick" class="intensityBtn flex-1 px-4 py-2 bg-gray-800/60 hover:bg-gray-800 rounded-lg text-sm font-medium transition">
               Quick
             </button>
-            <button class="flex-1 px-4 py-2 bg-accent text-black rounded-lg text-sm font-medium">
+            <button type="button" data-intensity="Standard" class="intensityBtn flex-1 px-4 py-2 bg-gray-800/60 rounded-lg text-sm font-medium transition">
               Standard
             </button>
-            <button class="flex-1 px-4 py-2 bg-gray-800/60 hover:bg-gray-800 rounded-lg text-sm font-medium transition">
+            <button type="button" data-intensity="Deep" class="intensityBtn flex-1 px-4 py-2 bg-gray-800/60 hover:bg-gray-800 rounded-lg text-sm font-medium transition">
               Deep
             </button>
           </div>
@@ -140,7 +140,7 @@
             <p class="text-sm text-gray-400">Enable UI animations</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" class="sr-only peer" checked>
+            <input id="animationsToggle" type="checkbox" class="sr-only peer" checked>
             <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
           </label>
         </div>
@@ -153,14 +153,142 @@
     <h3 class="text-lg font-semibold text-red-400 mb-4">Danger Zone</h3>
     <p class="text-sm text-gray-400 mb-4">These actions are irreversible. Please be certain.</p>
     <div class="flex gap-4">
-      <button class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm font-medium transition">
+      <button id="resetSettingsBtn" type="button" class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm font-medium transition">
         Reset All Settings
       </button>
-      <button class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm font-medium transition">
+      <button id="deleteAccountBtn" type="button" class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm font-medium transition">
         Delete Account
       </button>
     </div>
   </div>
-</div>
+  </div>
+
+<script>
+  // Settings page: load current settings and wire controls
+  async function loadSettings() {
+    try {
+      const res = await fetch('/api/settings');
+      if (!res.ok) throw new Error('Failed to load');
+      const s = await res.json();
+      // populate
+      document.getElementById('notifySecurity').checked = !!s.notify_security;
+      document.getElementById('deviceUpdates').checked = !!s.device_updates;
+      document.getElementById('emailReports').checked = !!s.email_reports;
+      document.getElementById('animationsToggle').checked = !!s.animations;
+      document.getElementById('scanFrequency').value = s.scan_frequency || 'Every 24 hours';
+      // intensity buttons
+      document.querySelectorAll('.intensityBtn').forEach(b => {
+        if (b.dataset.intensity === s.scan_intensity) {
+          b.classList.add('bg-accent','text-black','selected');
+        } else {
+          b.classList.remove('bg-accent','text-black','selected');
+        }
+      });
+      // theme preference is synced client-side but we can expose it
+    } catch (err) {
+      console.error('loadSettings', err);
+    }
+  }
+
+  function sendSettingsPatch(patch) {
+    return fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch)
+    }).then(r => r.json()).catch(e => { console.error(e); });
+  }
+
+  // wire controls
+  document.addEventListener('DOMContentLoaded', () => {
+    loadSettings();
+
+    document.getElementById('notifySecurity').addEventListener('change', (e) => {
+      sendSettingsPatch({ notify_security: e.target.checked });
+    });
+    document.getElementById('deviceUpdates').addEventListener('change', (e) => {
+      sendSettingsPatch({ device_updates: e.target.checked });
+    });
+    document.getElementById('emailReports').addEventListener('change', (e) => {
+      sendSettingsPatch({ email_reports: e.target.checked });
+    });
+    document.getElementById('animationsToggle').addEventListener('change', (e) => {
+      sendSettingsPatch({ animations: e.target.checked });
+    });
+    document.getElementById('scanFrequency').addEventListener('change', (e) => {
+      sendSettingsPatch({ scan_frequency: e.target.value });
+    });
+
+    document.querySelectorAll('.intensityBtn').forEach(b => {
+      b.addEventListener('click', (e) => {
+        const val = b.dataset.intensity;
+        // remove selected marker from all
+        document.querySelectorAll('.intensityBtn').forEach(x => {
+          x.classList.remove('bg-accent','text-black');
+          x.classList.remove('selected');
+          x.style.background = '';
+          x.style.color = '';
+        });
+        // mark clicked as selected (both class and inline fallback)
+        b.classList.add('bg-accent','text-black');
+        b.classList.add('selected');
+        b.style.background = '';
+        b.style.color = '';
+        sendSettingsPatch({ scan_intensity: val });
+      });
+    });
+
+    // change password flow
+    document.getElementById('changePasswordBtn').addEventListener('click', async () => {
+      const pw = prompt('Enter new password (min 6 chars):');
+      if (!pw) return;
+      try {
+        const res = await fetch('/api/change_password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_password: pw }) });
+        const j = await res.json();
+        if (!res.ok) alert(j.error || 'Failed to change password');
+        else alert('Password updated');
+      } catch (err) { console.error(err); alert('Error'); }
+    });
+
+    // enable 2FA (placeholder)
+    document.getElementById('enable2faBtn').addEventListener('click', async () => {
+      const ok = confirm('Enable two-factor authentication? This is a demo placeholder.');
+      if (!ok) return;
+      await sendSettingsPatch({ two_factor: true });
+      alert('2FA enabled (demo)');
+    });
+
+    // Reset settings
+    document.getElementById('resetSettingsBtn').addEventListener('click', async () => {
+      const ok = confirm('Reset all settings to defaults? This cannot be undone.');
+      if (!ok) return;
+      try {
+        const res = await fetch('/api/reset_settings', { method: 'POST' });
+        const j = await res.json();
+        if (res.ok) {
+          alert('Settings reset to defaults');
+          loadSettings();
+        } else {
+          alert(j.error || 'Failed to reset settings');
+        }
+      } catch (err) { console.error(err); alert('Error'); }
+    });
+
+    // Delete account
+    document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
+      const ok = confirm('Delete your account and all associated settings? This cannot be undone.');
+      if (!ok) return;
+      try {
+        const res = await fetch('/api/delete_account', { method: 'POST' });
+        const j = await res.json();
+        if (res.ok) {
+          // redirect to login
+          window.location.href = '/login';
+        } else {
+          alert(j.error || 'Failed to delete account');
+        }
+      } catch (err) { console.error(err); alert('Error'); }
+    });
+  });
+</script>
 
 {% endblock %}

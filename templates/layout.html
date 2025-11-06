@@ -234,6 +234,44 @@
       border-color: rgba(2,132,199,0.6);
       transform: translateZ(0) scale(1.01);
     }
+
+    /* Select/option color fixes for dark/light themes */
+    select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+    body.dark select, body.dark select:focus {
+      background: rgba(11,17,25,0.8) !important;
+      color: #E6F6FF !important;
+      border-color: rgba(2,132,199,0.25) !important;
+    }
+    body.dark select option {
+      background: #0b1220 !important;
+      color: #E6F6FF !important;
+    }
+    body.light select, body.light select:focus {
+      background: rgba(255,255,255,0.95) !important;
+      color: #1F2937 !important;
+      border-color: rgba(209,213,219,0.8) !important;
+    }
+    body.light select option {
+      background: #ffffff !important;
+      color: #1F2937 !important;
+    }
+
+    /* Strong visual styles for selected scan intensity buttons to ensure consistent appearance */
+    .intensityBtn.selected,
+    .intensityBtn.bg-accent.selected {
+      background: linear-gradient(90deg, #2563EB, #00C6FF) !important;
+      color: #000 !important;
+      box-shadow: 0 10px 30px rgba(37,99,235,0.12) !important;
+      transform: translateY(-2px) !important;
+    }
+    body.dark .intensityBtn.selected,
+    body.dark .intensityBtn.bg-accent.selected {
+      box-shadow: 0 10px 30px rgba(2,132,199,0.12) !important;
+    }
   </style>
 </head>
 

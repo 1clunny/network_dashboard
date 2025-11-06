@@ -1,4 +1,7 @@
-from flask import Flask, render_template, flash, redirect, url_for, request
+from flask import Flask, render_template, flash, redirect, url_for, request, jsonify
+import subprocess
+import platform
+import re
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -21,6 +24,30 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+class UserSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True)
+    notify_security = db.Column(db.Boolean, default=True)
+    device_updates = db.Column(db.Boolean, default=True)
+    email_reports = db.Column(db.Boolean, default=True)
+    two_factor = db.Column(db.Boolean, default=False)
+    scan_frequency = db.Column(db.String(50), default='Every 24 hours')
+    scan_intensity = db.Column(db.String(20), default='Standard')
+    animations = db.Column(db.Boolean, default=True)
+    theme = db.Column(db.String(10), default='dark')
+
+    def to_dict(self):
+        return {
+            'notify_security': bool(self.notify_security),
+            'device_updates': bool(self.device_updates),
+            'email_reports': bool(self.email_reports),
+            'two_factor': bool(self.two_factor),
+            'scan_frequency': self.scan_frequency,
+            'scan_intensity': self.scan_intensity,
+            'animations': bool(self.animations),
+            'theme': self.theme or 'dark'
+        }
 
 @login_manager.user_loader
 def load_user(id):
@@ -47,6 +74,185 @@ def security():
 @login_required
 def settings():
     return render_template("settings.html")
+
+
+@app.route('/api/settings', methods=['GET', 'POST'])
+@login_required
+def api_settings():
+    # Ensure settings record exists
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if request.method == 'GET':
+        if not settings:
+            settings = UserSettings(user_id=current_user.id)
+            db.session.add(settings)
+            db.session.commit()
+        return jsonify(settings.to_dict())
+
+    # POST: update settings (accept JSON)
+    data = request.get_json() or {}
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+
+    # safe updates
+    if 'notify_security' in data:
+        settings.notify_security = bool(data.get('notify_security'))
+    if 'device_updates' in data:
+        settings.device_updates = bool(data.get('device_updates'))
+    if 'email_reports' in data:
+        settings.email_reports = bool(data.get('email_reports'))
+    if 'two_factor' in data:
+        settings.two_factor = bool(data.get('two_factor'))
+    if 'scan_frequency' in data:
+        settings.scan_frequency = str(data.get('scan_frequency'))
+    if 'scan_intensity' in data:
+        settings.scan_intensity = str(data.get('scan_intensity'))
+    if 'animations' in data:
+        settings.animations = bool(data.get('animations'))
+    if 'theme' in data:
+        settings.theme = str(data.get('theme'))
+
+    db.session.commit()
+    return jsonify({'status': 'ok', 'settings': settings.to_dict()})
+
+
+@app.route('/api/reset_settings', methods=['POST'])
+@login_required
+def api_reset_settings():
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+    # reset to defaults
+    settings.notify_security = True
+    settings.device_updates = True
+    settings.email_reports = True
+    settings.two_factor = False
+    settings.scan_frequency = 'Every 24 hours'
+    settings.scan_intensity = 'Standard'
+    settings.animations = True
+    settings.theme = 'dark'
+    db.session.commit()
+    return jsonify({'status': 'ok', 'settings': settings.to_dict()})
+
+
+@app.route('/api/delete_account', methods=['POST'])
+@login_required
+def api_delete_account():
+    # Delete user settings and account, then logout
+    try:
+        settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+        if settings:
+            db.session.delete(settings)
+        uid = current_user.id
+        logout_user()
+        user = User.query.get(uid)
+        if user:
+            db.session.delete(user)
+        db.session.commit()
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/change_password', methods=['POST'])
+@login_required
+def api_change_password():
+    data = request.get_json() or {}
+    new_password = data.get('new_password')
+    if not new_password or len(new_password) < 6:
+        return jsonify({'error': 'Password must be at least 6 characters'}), 400
+    current_user.set_password(new_password)
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+
+def parse_netsh_output(output):
+    # Parse netsh wlan show networks mode=bssid output into a list of network dicts
+    networks = []
+    ssid = None
+    current = None
+    bssid_index = None
+    for line in output.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        m = re.match(r'^SSID\s+\d+\s+:\s+(.*)$', line)
+        if m:
+            ssid = m.group(1).strip()
+            current = {'ssid': ssid, 'bssids': [], 'auth': None, 'encryption': None}
+            networks.append(current)
+            bssid_index = 0
+            continue
+        if current is None:
+            continue
+        m = re.match(r'^Authentication\s+:\s+(.*)$', line)
+        if m:
+            current['auth'] = m.group(1).strip()
+            continue
+        m = re.match(r'^Encryption\s+:\s+(.*)$', line)
+        if m:
+            current['encryption'] = m.group(1).strip()
+            continue
+        m = re.match(r'^BSSID\s+\d+\s+:\s+(.*)$', line)
+        if m:
+            bssid = m.group(1).strip()
+            current['bssids'].append({'bssid': bssid})
+            bssid_index = len(current['bssids']) - 1
+            continue
+        m = re.match(r'^Signal\s+:\s+(\d+)%$', line)
+        if m and current['bssids']:
+            current['bssids'][bssid_index]['signal'] = int(m.group(1))
+            continue
+        m = re.match(r'^Channel\s+:\s+(\d+)', line)
+        if m and current['bssids']:
+            current['bssids'][bssid_index]['channel'] = int(m.group(1))
+            continue
+        m = re.match(r'^Radio type\s+:\s+(.*)$', line)
+        if m and current['bssids']:
+            current['bssids'][bssid_index]['radio'] = m.group(1).strip()
+            continue
+
+    # Flatten into individual network entries per BSSID for easier display
+    flat = []
+    for n in networks:
+        for b in n.get('bssids', []) or [{'bssid': None, 'signal': None, 'channel': None, 'radio': None}]:
+            flat.append({
+                'ssid': n.get('ssid'),
+                'bssid': b.get('bssid'),
+                'signal': b.get('signal', 0),
+                'channel': b.get('channel'),
+                'radio': b.get('radio'),
+                'auth': n.get('auth'),
+                'encryption': n.get('encryption')
+            })
+    return flat
+
+
+@app.route('/api/wifi_scan', methods=['GET'])
+@login_required
+def api_wifi_scan():
+    # Attempt to run a platform-specific Wi-Fi scan. On Windows use netsh.
+    system = platform.system()
+    if system == 'Windows':
+        try:
+            cp = subprocess.run(['netsh', 'wlan', 'show', 'networks', 'mode=bssid'], capture_output=True, text=True, timeout=8)
+            out = cp.stdout or cp.stderr or ''
+            results = parse_netsh_output(out)
+            return jsonify({'source': 'netsh', 'networks': results})
+        except Exception as e:
+            # fall through to demo data
+            print('netsh scan failed:', e)
+
+    # Fallback demo data (or on unsupported OS)
+    demo = [
+        {'ssid': 'Home-WiFi', 'bssid': 'AA:BB:CC:DD:EE:01', 'signal': 88, 'channel': 6, 'radio': '802.11n', 'auth': 'WPA2-Personal', 'encryption': 'AES'},
+        {'ssid': 'Office-Guest', 'bssid': 'AA:BB:CC:DD:EE:02', 'signal': 64, 'channel': 11, 'radio': '802.11ac', 'auth': 'WPA2-Enterprise', 'encryption': 'AES'},
+        {'ssid': 'Coffee_Shop', 'bssid': 'AA:BB:CC:DD:EE:03', 'signal': 42, 'channel': 1, 'radio': '802.11g', 'auth': 'Open', 'encryption': 'None'},
+        {'ssid': 'HiddenNet', 'bssid': 'AA:BB:CC:DD:EE:04', 'signal': 12, 'channel': 36, 'radio': '802.11ac', 'auth': 'WPA3', 'encryption': 'GCMP'},
+    ]
+    return jsonify({'source': 'demo', 'networks': demo})
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
