@@ -46,18 +46,57 @@ const links = [
 let selected = null;
 let clickEffects = [];
 
-// Make canvas responsive
-function resizeCanvas() {
-  canvas.width = canvas.offsetWidth;
-  canvas.height = canvas.offsetHeight;
+// Normalize positions and speeds into ratios so layout remains proportional
+function normalizeAnimated() {
+  const w = canvas.clientWidth || canvas.offsetWidth;
+  const h = canvas.clientHeight || canvas.offsetHeight;
+  devices.forEach(d => {
+    if (d._rx === undefined || d._ry === undefined) {
+      d._rx = (d.x !== undefined) ? (d.x / w) : 0.5;
+      d._ry = (d.y !== undefined) ? (d.y / h) : 0.5;
+    }
+    // speeds become normalized per-frame ratios
+    d._rdx = (d.dx !== undefined) ? (d.dx / w) : 0;
+    d._rdy = (d.dy !== undefined) ? (d.dy / h) : 0;
+    // compute current display coords
+    d.x = d._rx * w;
+    d.y = d._ry * h;
+  });
 }
-window.addEventListener("resize", resizeCanvas);
+
+// Make canvas responsive
+// DPR-aware resize so canvas stays crisp on HiDPI displays
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.offsetWidth;
+  const h = canvas.offsetHeight;
+  canvas.width = Math.max(1, Math.floor(w * dpr));
+  canvas.height = Math.max(1, Math.floor(h * dpr));
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // On resize, preserve normalized positions and recompute speeds
+  normalizeAnimated();
+}
+
+// Throttle resize with rAF to avoid repeated heavy work
+let resizeScheduled = false;
+window.addEventListener("resize", () => {
+  if (!resizeScheduled) {
+    resizeScheduled = true;
+    requestAnimationFrame(() => { resizeCanvas(); resizeScheduled = false; });
+  }
+});
+
+// initial setup
 resizeCanvas();
 
 // Draw a single device
 function drawDevice(ctx, device, radius = 10, glow = true) {
-  if(glow){
-    const gradient = ctx.createRadialGradient(device.x, device.y, 3, device.x, device.y, radius*2);
+  const x = device.x;
+  const y = device.y;
+  if (glow) {
+    const gradient = ctx.createRadialGradient(x, y, 3, x, y, radius * 2);
     gradient.addColorStop(0, device.color);
     gradient.addColorStop(1, "transparent");
     ctx.fillStyle = gradient;
@@ -65,40 +104,47 @@ function drawDevice(ctx, device, radius = 10, glow = true) {
     ctx.fillStyle = device.color;
   }
   ctx.beginPath();
-  ctx.arc(device.x, device.y, radius, 0, Math.PI*2);
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "#94a3b8";
   ctx.font = "12px Inter, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(device.name, device.x, device.y + radius + 12);
+  ctx.fillText(device.name, x, y + radius + 12);
 }
 
 // Draw animated network
 function drawAnimated() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // clear using CSS pixel sizes since we've set a transform for DPR
+  ctx.clearRect(0,0,canvas.clientWidth, canvas.clientHeight);
 
   // Lines
-  for(const [a,b] of links){
+  for (const [a, b] of links) {
     const d1 = devices[a], d2 = devices[b];
-    const gradient = ctx.createLinearGradient(d1.x,d1.y,d2.x,d2.y);
-    gradient.addColorStop(0,"rgba(0,198,255,0.25)");
-    gradient.addColorStop(1,"rgba(0,198,255,0.05)");
+    const gradient = ctx.createLinearGradient(d1.x, d1.y, d2.x, d2.y);
+    gradient.addColorStop(0, "rgba(0,198,255,0.25)");
+    gradient.addColorStop(1, "rgba(0,198,255,0.05)");
     ctx.strokeStyle = gradient;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(d1.x,d1.y);
-    ctx.lineTo(d2.x,d2.y);
+    ctx.moveTo(d1.x, d1.y);
+    ctx.lineTo(d2.x, d2.y);
     ctx.stroke();
   }
 
-  // Move & draw devices
-  for(const device of devices){
-    device.x += device.dx;
-    device.y += device.dy;
+  // Move & draw devices (using normalized ratios so they stay proportional)
+  for (const device of devices) {
+    // update normalized positions
+    device._rx += device._rdx;
+    device._ry += device._rdy;
 
-    if(device.x < 15 || device.x > canvas.width - 15) device.dx *= -1;
-    if(device.y < 15 || device.y > canvas.height - 15) device.dy *= -1;
+    // compute display positions
+    device.x = device._rx * canvas.clientWidth;
+    device.y = device._ry * canvas.clientHeight;
+
+    // bounce on edges (use CSS pixel sizes)
+    if (device.x < 15 || device.x > canvas.clientWidth - 15) device._rdx *= -1;
+    if (device.y < 15 || device.y > canvas.clientHeight - 15) device._rdy *= -1;
 
     drawDevice(ctx, device, 10);
   }
@@ -125,12 +171,12 @@ canvas.addEventListener("click",(e)=>{
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
 
-  for(const device of devices){
+  for (const device of devices) {
     const dx = mouseX - device.x, dy = mouseY - device.y;
-    if(Math.sqrt(dx*dx + dy*dy) < 12){
+    if (Math.sqrt(dx * dx + dy * dy) < 12) {
       selected = device;
       infoBox.innerHTML = `<p><strong>${device.name}</strong></p><p>${device.info}</p>`;
-      clickEffects.push({x:device.x, y:device.y, radius:10, color:device.color, opacity:1});
+      clickEffects.push({ x: device.x, y: device.y, radius: 10, color: device.color, opacity: 1 });
       break;
     }
   }

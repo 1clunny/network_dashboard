@@ -19,9 +19,6 @@
 <script>
   const canvas = document.getElementById('networkCanvas');
   const ctx = canvas.getContext('2d');
-  canvas.width = canvas.offsetWidth;
-  canvas.height = canvas.offsetHeight;
-
   const devices = [
     { name: "Router", x: 300, y: 250, color: "#00C6FF", info: "Main Gateway - 192.168.1.1" },
     { name: "Laptop", x: 150, y: 400, color: "#4ade80", info: "Laptop - 192.168.1.23" },
@@ -33,37 +30,86 @@
     [0,1],[0,2],[0,3]
   ];
 
+  // Convert absolute positions to normalized values (ratios) so devices stay proportional on resize
+  function normalizeDevices() {
+    const w = canvas.clientWidth || canvas.offsetWidth;
+    const h = canvas.clientHeight || canvas.offsetHeight;
+    devices.forEach(d => {
+      d._rx = (d.x !== undefined) ? (d.x / w) : (d._rx || 0.5);
+      d._ry = (d.y !== undefined) ? (d.y / h) : (d._ry || 0.5);
+    });
+  }
+
+  // Resize canvas for CSS size and devicePixelRatio to keep it sharp on HiDPI screens
+  function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.offsetWidth;
+    const h = canvas.offsetHeight;
+    canvas.width = Math.max(1, Math.floor(w * dpr));
+    canvas.height = Math.max(1, Math.floor(h * dpr));
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    normalizeDevices();
+    drawNetwork();
+  }
+
+  // Throttle resize via rAF
+  let resizeScheduled = false;
+  window.addEventListener('resize', () => {
+    if (!resizeScheduled) {
+      resizeScheduled = true;
+      requestAnimationFrame(() => { resizeCanvas(); resizeScheduled = false; });
+    }
+  });
+
+  // initial size and normalization
+  resizeCanvas();
+
   function drawNetwork() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // clear using CSS pixel sizes (clientWidth/clientHeight) because we set a transform
+    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     ctx.strokeStyle = "#1e293b";
     ctx.lineWidth = 2;
     for (const [a, b] of links) {
+      // compute display coordinates from ratios
+      const d1 = devices[a];
+      const d2 = devices[b];
+      const x1 = (d1._rx || 0.5) * canvas.clientWidth;
+      const y1 = (d1._ry || 0.5) * canvas.clientHeight;
+      const x2 = (d2._rx || 0.5) * canvas.clientWidth;
+      const y2 = (d2._ry || 0.5) * canvas.clientHeight;
       ctx.beginPath();
-      ctx.moveTo(devices[a].x, devices[a].y);
-      ctx.lineTo(devices[b].x, devices[b].y);
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
       ctx.stroke();
     }
 
     for (const device of devices) {
-      const gradient = ctx.createRadialGradient(device.x, device.y, 5, device.x, device.y, 25);
+      const dx = (device._rx || 0.5) * canvas.clientWidth;
+      const dy = (device._ry || 0.5) * canvas.clientHeight;
+      const gradient = ctx.createRadialGradient(dx, dy, 5, dx, dy, 25);
       gradient.addColorStop(0, device.color);
       gradient.addColorStop(1, "transparent");
       ctx.fillStyle = gradient;
       ctx.beginPath();
-      ctx.arc(device.x, device.y, 12, 0, Math.PI * 2);
+      ctx.arc(dx, dy, 12, 0, Math.PI * 2);
       ctx.fill();
+      // save last drawn for hit tests
+      device._drawX = dx;
+      device._drawY = dy;
     }
   }
 
-  drawNetwork();
+  // drawNetwork is called from resizeCanvas initially and on demand
 
   canvas.addEventListener("click", (e) => {
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     for (const device of devices) {
-      const dx = mouseX - device.x;
-      const dy = mouseY - device.y;
+      const dx = mouseX - (device._drawX || (device.x || 0));
+      const dy = mouseY - (device._drawY || (device.y || 0));
       if (Math.sqrt(dx * dx + dy * dy) < 20) {
         document.getElementById("deviceInfo").innerHTML = `
           <h4 class="text-white font-semibold">${device.name}</h4>
