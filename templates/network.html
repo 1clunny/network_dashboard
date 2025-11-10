@@ -1,13 +1,11 @@
 {% extends "layout.html" %}
 {% block content %}
 <div class="flex flex-col md:flex-row gap-6">
-  <!-- Network Graph -->
   <div class="flex-1 bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-gray-800 p-6 relative overflow-hidden">
     <h2 class="text-lg font-semibold text-accent mb-4">Network Map</h2>
     <canvas id="networkCanvas" class="w-full h-[500px] rounded-2xl bg-gray-950"></canvas>
   </div>
 
-  <!-- Sidebar Info -->
   <div class="w-full md:w-80 bg-gray-900/70 backdrop-blur-xl rounded-2xl border border-gray-800 p-6">
     <h3 class="text-accent font-semibold mb-4">Device Info</h3>
     <div id="deviceInfo" class="text-gray-400 space-y-2">
@@ -30,7 +28,6 @@
     [0,1],[0,2],[0,3]
   ];
 
-  // Convert absolute positions to normalized values (ratios) so devices stay proportional on resize
   function normalizeDevices() {
     const w = canvas.clientWidth || canvas.offsetWidth;
     const h = canvas.clientHeight || canvas.offsetHeight;
@@ -40,7 +37,6 @@
     });
   }
 
-  // Resize canvas for CSS size and devicePixelRatio to keep it sharp on HiDPI screens
   function resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.offsetWidth;
@@ -54,7 +50,6 @@
     drawNetwork();
   }
 
-  // Throttle resize via rAF
   let resizeScheduled = false;
   window.addEventListener('resize', () => {
     if (!resizeScheduled) {
@@ -63,16 +58,13 @@
     }
   });
 
-  // initial size and normalization
   resizeCanvas();
 
   function drawNetwork() {
-    // clear using CSS pixel sizes (clientWidth/clientHeight) because we set a transform
     ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     ctx.strokeStyle = "#1e293b";
     ctx.lineWidth = 2;
     for (const [a, b] of links) {
-      // compute display coordinates from ratios
       const d1 = devices[a];
       const d2 = devices[b];
       const x1 = (d1._rx || 0.5) * canvas.clientWidth;
@@ -95,13 +87,11 @@
       ctx.beginPath();
       ctx.arc(dx, dy, 12, 0, Math.PI * 2);
       ctx.fill();
-      // save last drawn for hit tests
       device._drawX = dx;
       device._drawY = dy;
     }
   }
 
-  // drawNetwork is called from resizeCanvas initially and on demand
 
   canvas.addEventListener("click", (e) => {
     const rect = canvas.getBoundingClientRect();

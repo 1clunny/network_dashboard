@@ -2,7 +2,6 @@
 {% block content %}
 
 <div class="flex flex-col gap-6 min-h-[calc(100vh-8rem)]">
-  <!-- Profile Section -->
   <div class="bg-gray-900/60 backdrop-blur-xl rounded-[28px] border border-gray-800 p-6">
     <div class="flex items-start gap-6">
       <div class="w-20 h-20 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center">
@@ -18,9 +17,7 @@
     </div>
   </div>
 
-  <!-- Settings Sections -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <!-- Notification Settings -->
     <div class="bg-gray-900/60 backdrop-blur-xl rounded-[28px] border border-gray-800 p-6">
       <h3 class="text-lg font-semibold text-accent mb-6">Notification Settings</h3>
       <div class="space-y-4">
@@ -59,7 +56,6 @@
       </div>
     </div>
 
-    <!-- Security Settings -->
     <div class="bg-gray-900/60 backdrop-blur-xl rounded-[28px] border border-gray-800 p-6">
       <h3 class="text-lg font-semibold text-accent mb-6">Security Settings</h3>
       <div class="space-y-6">
@@ -81,7 +77,6 @@
       </div>
     </div>
 
-    <!-- Scan Settings -->
     <div class="bg-gray-900/60 backdrop-blur-xl rounded-[28px] border border-gray-800 p-6">
       <h3 class="text-lg font-semibold text-accent mb-6">Network Scan Settings</h3>
       <div class="space-y-4">
@@ -112,7 +107,6 @@
       </div>
     </div>
 
-    <!-- Display Settings -->
     <div class="bg-gray-900/60 backdrop-blur-xl rounded-[28px] border border-gray-800 p-6">
       <h3 class="text-lg font-semibold text-accent mb-6">Display Settings</h3>
       <div class="space-y-4">
@@ -148,7 +142,6 @@
     </div>
   </div>
 
-  <!-- Danger Zone -->
   <div class="bg-red-500/5 backdrop-blur-xl rounded-[28px] border border-red-500/20 p-6 mt-4">
     <h3 class="text-lg font-semibold text-red-400 mb-4">Danger Zone</h3>
     <p class="text-sm text-gray-400 mb-4">These actions are irreversible. Please be certain.</p>
@@ -164,7 +157,6 @@
   </div>
 
 <script>
-  // Settings page: load current settings and wire controls
   async function loadSettings() {
     try {
       const res = await fetch('/api/settings');
@@ -176,7 +168,6 @@
       document.getElementById('emailReports').checked = !!s.email_reports;
       document.getElementById('animationsToggle').checked = !!s.animations;
       document.getElementById('scanFrequency').value = s.scan_frequency || 'Every 24 hours';
-      // intensity buttons
       document.querySelectorAll('.intensityBtn').forEach(b => {
         if (b.dataset.intensity === s.scan_intensity) {
           b.classList.add('bg-accent','text-black','selected');
@@ -184,7 +175,6 @@
           b.classList.remove('bg-accent','text-black','selected');
         }
       });
-      // theme preference is synced client-side but we can expose it
     } catch (err) {
       console.error('loadSettings', err);
     }
@@ -198,7 +188,6 @@
     }).then(r => r.json()).catch(e => { console.error(e); });
   }
 
-  // wire controls
   document.addEventListener('DOMContentLoaded', () => {
     loadSettings();
 
@@ -221,14 +210,12 @@
     document.querySelectorAll('.intensityBtn').forEach(b => {
       b.addEventListener('click', (e) => {
         const val = b.dataset.intensity;
-        // remove selected marker from all
         document.querySelectorAll('.intensityBtn').forEach(x => {
           x.classList.remove('bg-accent','text-black');
           x.classList.remove('selected');
           x.style.background = '';
           x.style.color = '';
         });
-        // mark clicked as selected (both class and inline fallback)
         b.classList.add('bg-accent','text-black');
         b.classList.add('selected');
         b.style.background = '';
@@ -237,7 +224,6 @@
       });
     });
 
-    // change password flow
     document.getElementById('changePasswordBtn').addEventListener('click', async () => {
       const pw = prompt('Enter new password (min 6 chars):');
       if (!pw) return;
@@ -249,7 +235,6 @@
       } catch (err) { console.error(err); alert('Error'); }
     });
 
-    // enable 2FA (placeholder)
     document.getElementById('enable2faBtn').addEventListener('click', async () => {
       const ok = confirm('Enable two-factor authentication? This is a demo placeholder.');
       if (!ok) return;
@@ -257,7 +242,6 @@
       alert('2FA enabled (demo)');
     });
 
-    // Reset settings
     document.getElementById('resetSettingsBtn').addEventListener('click', async () => {
       const ok = confirm('Reset all settings to defaults? This cannot be undone.');
       if (!ok) return;
@@ -273,7 +257,6 @@
       } catch (err) { console.error(err); alert('Error'); }
     });
 
-    // Delete account
     document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
       const ok = confirm('Delete your account and all associated settings? This cannot be undone.');
       if (!ok) return;
@@ -281,7 +264,6 @@
         const res = await fetch('/api/delete_account', { method: 'POST' });
         const j = await res.json();
         if (res.ok) {
-          // redirect to login
           window.location.href = '/login';
         } else {
           alert(j.error || 'Failed to delete account');

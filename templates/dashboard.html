@@ -118,7 +118,6 @@
 </script>
 
 <script>
-  // Dashboard: listen for global search events and filter the devices table
   document.addEventListener('globalSearch', (e) => {
     const q = (e.detail && e.detail.query) ? e.detail.query.trim().toLowerCase() : '';
     const tbody = document.getElementById('devicesTable');

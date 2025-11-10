@@ -7,7 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'  # Change this to a secure secret key
+app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -79,7 +79,6 @@ def settings():
 @app.route('/api/settings', methods=['GET', 'POST'])
 @login_required
 def api_settings():
-    # Ensure settings record exists
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
     if request.method == 'GET':
         if not settings:
@@ -88,13 +87,11 @@ def api_settings():
             db.session.commit()
         return jsonify(settings.to_dict())
 
-    # POST: update settings (accept JSON)
     data = request.get_json() or {}
     if not settings:
         settings = UserSettings(user_id=current_user.id)
         db.session.add(settings)
 
-    # safe updates
     if 'notify_security' in data:
         settings.notify_security = bool(data.get('notify_security'))
     if 'device_updates' in data:
@@ -123,7 +120,6 @@ def api_reset_settings():
     if not settings:
         settings = UserSettings(user_id=current_user.id)
         db.session.add(settings)
-    # reset to defaults
     settings.notify_security = True
     settings.device_updates = True
     settings.email_reports = True
@@ -139,7 +135,6 @@ def api_reset_settings():
 @app.route('/api/delete_account', methods=['POST'])
 @login_required
 def api_delete_account():
-    # Delete user settings and account, then logout
     try:
         settings = UserSettings.query.filter_by(user_id=current_user.id).first()
         if settings:
@@ -169,7 +164,6 @@ def api_change_password():
 
 
 def parse_netsh_output(output):
-    # Parse netsh wlan show networks mode=bssid output into a list of network dicts
     networks = []
     ssid = None
     current = None
@@ -214,7 +208,6 @@ def parse_netsh_output(output):
             current['bssids'][bssid_index]['radio'] = m.group(1).strip()
             continue
 
-    # Flatten into individual network entries per BSSID for easier display
     flat = []
     for n in networks:
         for b in n.get('bssids', []) or [{'bssid': None, 'signal': None, 'channel': None, 'radio': None}]:
@@ -233,19 +226,68 @@ def parse_netsh_output(output):
 @app.route('/api/wifi_scan', methods=['GET'])
 @login_required
 def api_wifi_scan():
-    # Attempt to run a platform-specific Wi-Fi scan. On Windows use netsh.
     system = platform.system()
     if system == 'Windows':
         try:
             cp = subprocess.run(['netsh', 'wlan', 'show', 'networks', 'mode=bssid'], capture_output=True, text=True, timeout=8)
             out = cp.stdout or cp.stderr or ''
             results = parse_netsh_output(out)
+            if not results and re.search(r'SSID|BSSID|Signal|Channel|Authentication|Encryption', out, re.I):
+                print('netsh output (first 400 chars):', out[:400])
+                ssids = []
+                curr = None
+                for line in out.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    m = re.match(r'(?mi)^SSID\s*\d*\s*[:\-]\s*(.+)$', line)
+                    if m:
+                        curr = {'ssid': m.group(1).strip(), 'bssids': [], 'auth': None, 'encryption': None}
+                        ssids.append(curr)
+                        continue
+                    if curr is None:
+                        continue
+                    m = re.match(r'(?mi)^BSSID\s*\d*\s*[:\-]\s*(.+)$', line)
+                    if m:
+                        curr['bssids'].append({'bssid': m.group(1).strip()})
+                        continue
+                    m = re.match(r'(?mi)^Signal\s*[:\-]\s*(\d+)%', line)
+                    if m and curr.get('bssids'):
+                        curr['bssids'][-1]['signal'] = int(m.group(1))
+                        continue
+                    m = re.match(r'(?mi)^Channel\s*[:\-]\s*(\d+)', line)
+                    if m and curr.get('bssids'):
+                        curr['bssids'][-1]['channel'] = int(m.group(1))
+                        continue
+                    m = re.match(r'(?mi)^Authentication\s*[:\-]\s*(.+)$', line)
+                    if m:
+                        curr['auth'] = m.group(1).strip()
+                        continue
+                    m = re.match(r'(?mi)^Encryption\s*[:\-]\s*(.+)$', line)
+                    if m:
+                        curr['encryption'] = m.group(1).strip()
+                        continue
+
+                fallback = []
+                for n in ssids:
+                    for b in n.get('bssids', []) or [{'bssid': None, 'signal': None, 'channel': None, 'radio': None}]:
+                        fallback.append({
+                            'ssid': n.get('ssid'),
+                            'bssid': b.get('bssid'),
+                            'signal': b.get('signal', 0),
+                            'channel': b.get('channel'),
+                            'radio': b.get('radio'),
+                            'auth': n.get('auth'),
+                            'encryption': n.get('encryption')
+                        })
+                if fallback:
+                    print('netsh tolerant parse produced', len(fallback), 'entries')
+                    return jsonify({'source': 'netsh', 'networks': fallback})
+
             return jsonify({'source': 'netsh', 'networks': results})
         except Exception as e:
-            # fall through to demo data
             print('netsh scan failed:', e)
 
-    # Fallback demo data (or on unsupported OS)
     demo = [
         {'ssid': 'Home-WiFi', 'bssid': 'AA:BB:CC:DD:EE:01', 'signal': 88, 'channel': 6, 'radio': '802.11n', 'auth': 'WPA2-Personal', 'encryption': 'AES'},
         {'ssid': 'Office-Guest', 'bssid': 'AA:BB:CC:DD:EE:02', 'signal': 64, 'channel': 11, 'radio': '802.11ac', 'auth': 'WPA2-Enterprise', 'encryption': 'AES'},
