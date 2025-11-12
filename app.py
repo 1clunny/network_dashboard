@@ -229,8 +229,10 @@ def api_wifi_scan():
     system = platform.system()
     if system == 'Windows':
         try:
-            cp = subprocess.run(['netsh', 'wlan', 'show', 'networks', 'mode=bssid'], capture_output=True, text=True, timeout=8)
+            cp = subprocess.run(['netsh', 'wlan', 'show', 'networks', 'mode=bssid'], capture_output=True, text=True, timeout=8, shell=True)
             out = cp.stdout or cp.stderr or ''
+            if 'location permission' in out.lower() or 'elevation' in out.lower() or cp.returncode != 0:
+                return jsonify({'error': 'Unable to scan Wi-Fi networks. Please ensure location services are enabled in Privacy & Security settings and run the application as administrator.', 'source': 'error'})
             results = parse_netsh_output(out)
             if not results and re.search(r'SSID|BSSID|Signal|Channel|Authentication|Encryption', out, re.I):
                 print('netsh output (first 400 chars):', out[:400])
@@ -287,6 +289,7 @@ def api_wifi_scan():
             return jsonify({'source': 'netsh', 'networks': results})
         except Exception as e:
             print('netsh scan failed:', e)
+            return jsonify({'error': f'Wi-Fi scan failed: {str(e)}', 'source': 'error'})
 
     demo = [
         {'ssid': 'Home-WiFi', 'bssid': 'AA:BB:CC:DD:EE:01', 'signal': 88, 'channel': 6, 'radio': '802.11n', 'auth': 'WPA2-Personal', 'encryption': 'AES'},

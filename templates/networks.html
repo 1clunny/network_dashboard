@@ -27,6 +27,11 @@ async function fetchNetworks() {
   try {
     const res = await fetch('/api/wifi_scan');
     const j = await res.json();
+    if (j.error) {
+      grid.innerHTML = `<div class="col-span-full py-6 text-center text-red-400">${j.error}</div>`;
+      elSource.textContent = 'error';
+      return;
+    }
     elSource.textContent = j.source === 'netsh' ? 'scanned from system' : 'demo data';
     renderNetworks(j.networks || []);
   } catch (e) {
@@ -63,11 +68,11 @@ function renderNetworks(list) {
     const signal = typeof n.signal === 'number' ? n.signal : 0;
     const sec = (n.auth || 'Unknown') + (n.encryption ? ` • ${n.encryption}` : '');
     const card = document.createElement('div');
-    card.className = 'p-4 rounded-xl backdrop-blur-xl border border-gray-800/40 bg-gray-900/50 hover:shadow-glow cursor-pointer transition';
+    card.className = 'p-4 rounded-xl backdrop-blur-xl border border-gray-300/40 bg-white-900/50 hover:shadow-glow cursor-pointer transition';
     card.innerHTML = `
       <div class=\"flex items-start justify-between gap-3\"> 
         <div class=\"flex-1\"> 
-          <h4 class=\"font-semibold text-white truncate\">${safeName}</h4>
+          <h4 class=\"font-semibold text-gray truncate\">${safeName}</h4>
           <p class=\"text-sm text-gray-400 mt-1 truncate\">${sec}</p>
           <p class=\"text-xs text-gray-400 mt-2\">Channel: ${n.channel || '-'} • BSSID: ${bssid || '-'} • ${n.radio || ''}</p>
         </div>
