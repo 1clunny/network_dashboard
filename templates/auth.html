@@ -58,6 +58,7 @@
         <div>
           <label for="name" class="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
           <input type="text" id="name" name="name" required 
+                 value="{{ name or '' }}"
                  class="w-full px-4 py-3 rounded-xl bg-gray-900/60 border border-gray-800 focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none backdrop-blur-xl transition">
         </div>
       {% endif %}
@@ -65,6 +66,7 @@
       <div>
         <label for="email" class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
         <input type="email" id="email" name="email" required 
+               value="{{ email or '' }}"
                class="w-full px-4 py-3 rounded-xl bg-gray-900/60 border border-gray-800 focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none backdrop-blur-xl transition">
       </div>
 
@@ -92,5 +94,89 @@
   <script>
     lucide.createIcons();
   </script>
+
+<!-- HELP BUTTON FIXO CENTRAL -->
+<button id="helpBtn" 
+        class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-5 py-3 rounded-2xl shadow-glow hover:shadow-accent/50 transition transform hover:-translate-y-0.5 z-50 font-semibold flex items-center gap-2">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 12.728 9 9 0 0112.728-12.728z" />
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3" />
+  </svg>
+  HELP
+</button>
+
+<!-- Help Modal -->
+<div id="helpModal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+  <div class="bg-gray-900 p-6 rounded-2xl w-full max-w-md shadow-xl animate-fadeIn relative">
+    <h3 class="text-2xl font-bold text-white mb-4 text-center">Report an Issue</h3>
+
+    <!-- Email Field -->
+    <div class="mb-4">
+      <label for="helpEmail" class="block text-sm font-medium text-white mb-1">Your Email</label>
+      <input type="email" id="helpEmail" placeholder="you@example.com" required
+             class="w-full p-4 rounded-xl bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-accent">
+    </div>
+
+    <!-- Message Field -->
+    <div class="mb-4">
+      <label for="helpMessage" class="block text-sm font-medium text-white mb-1">Describe the issue</label>
+      <textarea id="helpMessage" placeholder="Describe your issue..." rows="5"
+                class="w-full p-4 rounded-xl bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-accent resize-none"></textarea>
+    </div>
+
+    <div class="flex justify-end gap-3">
+      <button id="closeHelp" class="px-5 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 transition text-white font-semibold">Cancel</button>
+      <button id="sendHelp" class="px-5 py-2 rounded-xl bg-gradient-to-r from-accent to-blue-500 text-white font-bold shadow-glow hover:shadow-accent/70 transition">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const helpBtn = document.getElementById('helpBtn');
+  const helpModal = document.getElementById('helpModal');
+  const closeHelp = document.getElementById('closeHelp');
+  const sendHelp = document.getElementById('sendHelp');
+
+  helpBtn.addEventListener('click', () => helpModal.classList.remove('hidden'));
+  closeHelp.addEventListener('click', () => helpModal.classList.add('hidden'));
+
+  sendHelp.addEventListener('click', async () => {
+    const email = document.getElementById('helpEmail').value.trim();
+    const message = document.getElementById('helpMessage').value.trim();
+    if(!email || !message) return alert("Please enter your email and message.");
+
+    // Fecha modal imediatamente para prevenir spam
+    helpModal.classList.add('hidden');
+
+    // Monta o corpo do email com destaque para o email do usuário
+    const fullMessage = `User Email: **${email}**\n\nMessage:\n${message}`;
+
+    try {
+      const res = await fetch("/send_help", {
+        method: "POST",
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({message: fullMessage})
+      });
+      const data = await res.json();
+      if(data.status === "ok") {
+        alert("Your message was sent. Thank you!");
+        document.getElementById('helpMessage').value = '';
+        document.getElementById('helpEmail').value = '';
+      } else {
+        alert("Failed to send message. Try again later.");
+      }
+    } catch(e) {
+      alert("Error sending message. Try again later.");
+      console.error(e);
+    }
+  });
+</script>
+
+
+
+
+</body>
+
+
 </body>
 </html>

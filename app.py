@@ -1,29 +1,59 @@
 from flask import Flask, render_template, flash, redirect, url_for, request, jsonify
-import subprocess
-import platform
-import re
+import subprocess, platform, re
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer
+
+#Aqui vai ser feita a validação da senha
+import re
+
+def validate_password(password):
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    return True, ""
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 db = SQLAlchemy(app)
+
+# -------------------
+# Flask-Login
+# -------------------
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# -------------------
+# Flask-Mail
+# -------------------
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'networkdashboard.sentinel@gmail.com'
+app.config['MAIL_PASSWORD'] = 'pebv pqjw xltj ucsf'  # App password
+app.config['MAIL_DEFAULT_SENDER'] = ('SENTINEL', 'networkdashboard.sentinel@gmail.com')
+mail = Mail(app)
+s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
+# -------------------
+# Models
+# -------------------
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     email = db.Column(db.String(100), unique=True)
-    password_hash = db.Column(db.String(100))
+    password_hash = db.Column(db.String(200))
+    is_verified = db.Column(db.Boolean, default=False)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
 
 class UserSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -49,33 +79,172 @@ class UserSettings(db.Model):
             'theme': self.theme or 'dark'
         }
 
+
 @login_manager.user_loader
 def load_user(id):
     return User.query.get(int(id))
 
-@app.route("/")
+# -------------------
+# Authentication routes
+# -------------------
+@app.route("/register", methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        # --- Validação da senha ---
+        valid, msg = validate_password(password)
+        if not valid:
+            flash(msg, 'error')
+            return render_template('auth.html', name=name, email=email)
+
+        # --- Verifica se o usuário já existe ---
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            if existing_user.is_verified:
+                flash('Email already registered', 'error')
+                return render_template('auth.html')
+            else:
+                # Remove user não verificado para permitir novo registo
+                db.session.delete(existing_user)
+                db.session.commit()
+
+        # --- Cria novo usuário ---
+        user = User(name=name, email=email, is_verified=False)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+
+        # --- Envia email de verificação ---
+        token = s.dumps(email, salt='email-verify')
+        link = url_for('verify_email', token=token, _external=True)
+
+        html_body = f"""
+<center>
+  <table width="100%" bgcolor="#f0f4f8" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center" style="padding: 40px 10px;">
+        <!-- Card -->
+        <table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" style="border-radius:16px; overflow:hidden; max-width:600px;">
+          
+          <!-- Top gradient accent -->
+          <tr>
+            <td height="8" style="background: linear-gradient(90deg, #4F46E5, #6366F1);"></td>
+          </tr>
+          
+          <tr>
+            <td align="center" style="padding:30px;">
+              
+              <!-- Rounded Logo -->
+              <img src="https://1clunny.github.io/SENTINEL.png"
+                   width="120"
+                   style="display:block; max-width:100%; height:auto; margin-bottom:25px; border-radius:24px;"
+                   alt="SENTINEL Logo" />
+              
+              <!-- Heading -->
+              <h2 style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; font-size:26px; color:#1F2937; font-weight:700; margin:0 0 15px 0;">
+                Welcome, {name}!
+              </h2>
+              
+              <!-- Body text -->
+              <p style="font-family: 'Verdana', Helvetica, Arial, sans-serif; font-size:17px; color:#4B5563; line-height:1.6; margin:0 0 30px 0;">
+                Thank you for registering. To activate your account, please verify your email by clicking the button below. This link will expire in 1 minute.
+              </p>
+              
+              <!-- Button -->
+              <a href="{link}" 
+                 style="display:inline-block; padding:14px 28px; background-color:#4F46E5; color:#ffffff; text-decoration:none; border-radius:8px; font-family:'Segoe UI', Helvetica, Arial, sans-serif; font-weight:700; font-size:16px; min-width:140px; text-align:center;">
+                Verify Email
+              </a>
+              
+              <!-- Divider -->
+              <hr style="margin:30px 0; border:none; border-top:1px solid #E5E7EB; width:80%;" />
+              
+              <!-- Footer -->
+              <p style="font-family: 'Verdana', Helvetica, Arial, sans-serif; font-size:12px; color:#9CA3AF; line-height:1.4; margin:0;">
+                If you did not register for this account, you can safely ignore this email.
+              </p>
+              
+            </td>
+          </tr>
+        </table>
+        <!-- End card -->
+      </td>
+    </tr>
+  </table>
+</center>
+"""
+
+
+        msg = Message('Verify your email', recipients=[email], html=html_body)
+        mail.send(msg)
+
+        flash('Registration successful! Please check your email to verify your account.', 'success')
+        return redirect(url_for('login'))
+
+    # GET request apenas mostra o formulário
+    return render_template('auth.html')
+
+
+@app.route('/verify/<token>')
+def verify_email(token):
+    try:
+        email = s.loads(token, salt='email-verify', max_age=60) #Demora 1 minuto para expirar e assim so usuários podem se registrar novamente.
+        user = User.query.filter_by(email=email).first()
+        if user:
+            user.is_verified = True
+            db.session.commit()
+            flash('Email verified successfully! You can now log in.', 'success')
+            return redirect(url_for('login'))
+        else:
+            flash('User not found.', 'error')
+            return redirect(url_for('register'))
+    except:
+        flash('Verification link expired or invalid. Please register again.', 'error')
+        return redirect(url_for('register'))
+
+
+@app.route("/login", methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        user = User.query.filter_by(email=email).first()
+
+        if user:
+            if not user.is_verified:
+                flash('Email not verified. Please check your inbox.', 'error')
+                return redirect(url_for('login'))
+
+            if user.check_password(password):
+                login_user(user)
+                return redirect(url_for('dashboard'))
+            else:
+                flash('Invalid password', 'error')
+        else:
+            flash('User not found', 'error')
+
+    return render_template('auth.html')
+
+
+@app.route("/logout")
 @login_required
-def dashboard():
-    return render_template("dashboard.html")
-@app.route("/network")
-def network():
-    return render_template("network.html")
+def logout():
+    logout_user()
+    flash('Logged out successfully', 'success')
+    return redirect(url_for('login'))
 
-@app.route("/networks")
-def networks():
-    return render_template("networks.html")
-
-@app.route("/security")
-@login_required
-def security():
-    return render_template("security.html")
-
-@app.route("/settings")
-@login_required
-def settings():
-    return render_template("settings.html")
-
-
+# -------------------
+# Settings API
+# -------------------
 @app.route('/api/settings', methods=['GET', 'POST'])
 @login_required
 def api_settings():
@@ -92,22 +261,9 @@ def api_settings():
         settings = UserSettings(user_id=current_user.id)
         db.session.add(settings)
 
-    if 'notify_security' in data:
-        settings.notify_security = bool(data.get('notify_security'))
-    if 'device_updates' in data:
-        settings.device_updates = bool(data.get('device_updates'))
-    if 'email_reports' in data:
-        settings.email_reports = bool(data.get('email_reports'))
-    if 'two_factor' in data:
-        settings.two_factor = bool(data.get('two_factor'))
-    if 'scan_frequency' in data:
-        settings.scan_frequency = str(data.get('scan_frequency'))
-    if 'scan_intensity' in data:
-        settings.scan_intensity = str(data.get('scan_intensity'))
-    if 'animations' in data:
-        settings.animations = bool(data.get('animations'))
-    if 'theme' in data:
-        settings.theme = str(data.get('theme'))
+    for key in ['notify_security','device_updates','email_reports','two_factor','scan_frequency','scan_intensity','animations','theme']:
+        if key in data:
+            setattr(settings, key, data[key] if isinstance(data[key], bool) else str(data[key]))
 
     db.session.commit()
     return jsonify({'status': 'ok', 'settings': settings.to_dict()})
@@ -131,223 +287,74 @@ def api_reset_settings():
     db.session.commit()
     return jsonify({'status': 'ok', 'settings': settings.to_dict()})
 
-
-@app.route('/api/delete_account', methods=['POST'])
+# -------------------
+# Keep your dashboard, network, security, settings, and other APIs here as before
+# -------------------
+@app.route("/")
 @login_required
-def api_delete_account():
-    try:
-        settings = UserSettings.query.filter_by(user_id=current_user.id).first()
-        if settings:
-            db.session.delete(settings)
-        uid = current_user.id
-        logout_user()
-        user = User.query.get(uid)
-        if user:
-            db.session.delete(user)
-        db.session.commit()
-        return jsonify({'status': 'ok'})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+def dashboard():
+    return render_template("dashboard.html")
 
+@app.route("/network")
+def network():
+    return render_template("network.html")
 
-@app.route('/api/change_password', methods=['POST'])
+@app.route("/networks")
+def networks():
+    return render_template("networks.html")
+
+@app.route("/security")
 @login_required
-def api_change_password():
+def security():
+    return render_template("security.html")
+
+@app.route("/settings")
+@login_required
+def settings():
+    return render_template("settings.html")
+
+#Botão de ajuda / relatório de bugs
+@app.route("/send_help", methods=["POST"])
+def send_help():
     data = request.get_json() or {}
-    new_password = data.get('new_password')
-    if not new_password or len(new_password) < 6:
-        return jsonify({'error': 'Password must be at least 6 characters'}), 400
-    current_user.set_password(new_password)
-    db.session.commit()
+    message = data.get("message", "").strip()
+    if not message:
+        return jsonify({"status": "error", "msg": "No message provided."})
+
+    try:
+        msg = Message(
+            subject="User Help / Bug Report",
+            recipients=["networkdashboard.sentinel@gmail.com"],
+            body=f"User sent the following message:\n\n{message}"
+        )
+        mail.send(msg)
+        return jsonify({"status":"ok"})
+    except Exception as e:
+        print("Error sending help email:", e)
+        return jsonify({"status":"error"})
+    
+@app.route('/send_help', methods=['POST'])
+def send_help_route():
+    data = request.get_json()
+    message = data.get('message')
+
+    if not message:
+        return jsonify({'status': 'error', 'msg': 'No message provided'})
+
+    # Corpo simples do email
+    msg = Message(subject='Help Request from User',
+                  recipients=['networkdashboard.sentinel@gmail.com'],
+                  body=message)
+    mail.send(msg)
+
     return jsonify({'status': 'ok'})
 
 
-def parse_netsh_output(output):
-    networks = []
-    ssid = None
-    current = None
-    bssid_index = None
-    for line in output.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        m = re.match(r'^SSID\s+\d+\s+:\s+(.*)$', line)
-        if m:
-            ssid = m.group(1).strip()
-            current = {'ssid': ssid, 'bssids': [], 'auth': None, 'encryption': None}
-            networks.append(current)
-            bssid_index = 0
-            continue
-        if current is None:
-            continue
-        m = re.match(r'^Authentication\s+:\s+(.*)$', line)
-        if m:
-            current['auth'] = m.group(1).strip()
-            continue
-        m = re.match(r'^Encryption\s+:\s+(.*)$', line)
-        if m:
-            current['encryption'] = m.group(1).strip()
-            continue
-        m = re.match(r'^BSSID\s+\d+\s+:\s+(.*)$', line)
-        if m:
-            bssid = m.group(1).strip()
-            current['bssids'].append({'bssid': bssid})
-            bssid_index = len(current['bssids']) - 1
-            continue
-        m = re.match(r'^Signal\s+:\s+(\d+)%$', line)
-        if m and current['bssids']:
-            current['bssids'][bssid_index]['signal'] = int(m.group(1))
-            continue
-        m = re.match(r'^Channel\s+:\s+(\d+)', line)
-        if m and current['bssids']:
-            current['bssids'][bssid_index]['channel'] = int(m.group(1))
-            continue
-        m = re.match(r'^Radio type\s+:\s+(.*)$', line)
-        if m and current['bssids']:
-            current['bssids'][bssid_index]['radio'] = m.group(1).strip()
-            continue
-
-    flat = []
-    for n in networks:
-        for b in n.get('bssids', []) or [{'bssid': None, 'signal': None, 'channel': None, 'radio': None}]:
-            flat.append({
-                'ssid': n.get('ssid'),
-                'bssid': b.get('bssid'),
-                'signal': b.get('signal', 0),
-                'channel': b.get('channel'),
-                'radio': b.get('radio'),
-                'auth': n.get('auth'),
-                'encryption': n.get('encryption')
-            })
-    return flat
 
 
-@app.route('/api/wifi_scan', methods=['GET'])
-@login_required
-def api_wifi_scan():
-    system = platform.system()
-    if system == 'Windows':
-        try:
-            cp = subprocess.run(['netsh', 'wlan', 'show', 'networks', 'mode=bssid'], capture_output=True, text=True, timeout=8, shell=True)
-            out = cp.stdout or cp.stderr or ''
-            if 'location permission' in out.lower() or 'elevation' in out.lower() or cp.returncode != 0:
-                return jsonify({'error': 'Unable to scan Wi-Fi networks. Please ensure location services are enabled in Privacy & Security settings and run the application as administrator.', 'source': 'error'})
-            results = parse_netsh_output(out)
-            if not results and re.search(r'SSID|BSSID|Signal|Channel|Authentication|Encryption', out, re.I):
-                print('netsh output (first 400 chars):', out[:400])
-                ssids = []
-                curr = None
-                for line in out.splitlines():
-                    line = line.strip()
-                    if not line:
-                        continue
-                    m = re.match(r'(?mi)^SSID\s*\d*\s*[:\-]\s*(.+)$', line)
-                    if m:
-                        curr = {'ssid': m.group(1).strip(), 'bssids': [], 'auth': None, 'encryption': None}
-                        ssids.append(curr)
-                        continue
-                    if curr is None:
-                        continue
-                    m = re.match(r'(?mi)^BSSID\s*\d*\s*[:\-]\s*(.+)$', line)
-                    if m:
-                        curr['bssids'].append({'bssid': m.group(1).strip()})
-                        continue
-                    m = re.match(r'(?mi)^Signal\s*[:\-]\s*(\d+)%', line)
-                    if m and curr.get('bssids'):
-                        curr['bssids'][-1]['signal'] = int(m.group(1))
-                        continue
-                    m = re.match(r'(?mi)^Channel\s*[:\-]\s*(\d+)', line)
-                    if m and curr.get('bssids'):
-                        curr['bssids'][-1]['channel'] = int(m.group(1))
-                        continue
-                    m = re.match(r'(?mi)^Authentication\s*[:\-]\s*(.+)$', line)
-                    if m:
-                        curr['auth'] = m.group(1).strip()
-                        continue
-                    m = re.match(r'(?mi)^Encryption\s*[:\-]\s*(.+)$', line)
-                    if m:
-                        curr['encryption'] = m.group(1).strip()
-                        continue
-
-                fallback = []
-                for n in ssids:
-                    for b in n.get('bssids', []) or [{'bssid': None, 'signal': None, 'channel': None, 'radio': None}]:
-                        fallback.append({
-                            'ssid': n.get('ssid'),
-                            'bssid': b.get('bssid'),
-                            'signal': b.get('signal', 0),
-                            'channel': b.get('channel'),
-                            'radio': b.get('radio'),
-                            'auth': n.get('auth'),
-                            'encryption': n.get('encryption')
-                        })
-                if fallback:
-                    print('netsh tolerant parse produced', len(fallback), 'entries')
-                    return jsonify({'source': 'netsh', 'networks': fallback})
-
-            return jsonify({'source': 'netsh', 'networks': results})
-        except Exception as e:
-            print('netsh scan failed:', e)
-            return jsonify({'error': f'Wi-Fi scan failed: {str(e)}', 'source': 'error'})
-
-    demo = [
-        {'ssid': 'Home-WiFi', 'bssid': 'AA:BB:CC:DD:EE:01', 'signal': 88, 'channel': 6, 'radio': '802.11n', 'auth': 'WPA2-Personal', 'encryption': 'AES'},
-        {'ssid': 'Office-Guest', 'bssid': 'AA:BB:CC:DD:EE:02', 'signal': 64, 'channel': 11, 'radio': '802.11ac', 'auth': 'WPA2-Enterprise', 'encryption': 'AES'},
-        {'ssid': 'Coffee_Shop', 'bssid': 'AA:BB:CC:DD:EE:03', 'signal': 42, 'channel': 1, 'radio': '802.11g', 'auth': 'Open', 'encryption': 'None'},
-        {'ssid': 'HiddenNet', 'bssid': 'AA:BB:CC:DD:EE:04', 'signal': 12, 'channel': 36, 'radio': '802.11ac', 'auth': 'WPA3', 'encryption': 'GCMP'},
-    ]
-    return jsonify({'source': 'demo', 'networks': demo})
-
-@app.route("/login", methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        user = User.query.filter_by(email=email).first()
-        
-        if user and user.check_password(password):
-            login_user(user)
-            return redirect(url_for('dashboard'))
-        else:
-            flash('Invalid email or password', 'error')
-    
-    return render_template('auth.html')
-
-@app.route("/register", methods=['GET', 'POST'])
-def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    
-    if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered', 'error')
-            return render_template('auth.html')
-        
-        user = User(name=name, email=email)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        
-        flash('Registration successful! Please log in.', 'success')
-        return redirect(url_for('login'))
-    
-    return render_template('auth.html')
-
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
-
+# -------------------
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True, host="0.0.0.0", port=5000)
+    
