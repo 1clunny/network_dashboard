@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Scan | SENTINEL</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen">
+
+  <h1 class="text-3xl font-bold mb-8">Network Scanner</h1>
+
+  <button id="scanBtn"
+          class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-transform transform hover:-translate-y-1 flex items-center gap-2 font-semibold">
+    <i data-lucide="wifi"></i>
+    Scan Networks
+  </button>
+
+  <div id="scanResult" class="mt-8 w-full max-w-md bg-gray-800 p-6 rounded-xl shadow-lg hidden">
+    <h2 class="text-xl font-semibold mb-4">Available Networks</h2>
+    <ul id="networksList" class="space-y-2 text-gray-200"></ul>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const scanBtn = document.getElementById("scanBtn");
+    const scanResult = document.getElementById("scanResult");
+    const networksList = document.getElementById("networksList");
+
+    scanBtn.addEventListener("click", async () => {
+      scanBtn.disabled = true;
+      scanBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                           </svg> Scanning...`;
+
+      const res = await fetch("/scan_networks");
+      const data = await res.json();
+
+      scanBtn.disabled = false;
+      scanBtn.innerHTML = `<i data-lucide="wifi"></i> Scan Networks`;
+      lucide.createIcons();
+
+      if (data.status === "ok") {
+        networksList.innerHTML = "";
+        if (data.networks.length === 0) {
+          networksList.innerHTML = "<li class='text-gray-400'>No networks found.</li>";
+        } else {
+          data.networks.forEach(n => {
+            const li = document.createElement("li");
+            li.textContent = n;
+            li.className = "bg-gray-700 px-3 py-2 rounded-md";
+            networksList.appendChild(li);
+          });
+        }
+        scanResult.classList.remove("hidden");
+      } else {
+        alert("Error scanning networks: " + data.message);
+      }
+    });
+  </script>
+</body>
+</html>

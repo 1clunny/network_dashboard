@@ -349,8 +349,71 @@ def send_help_route():
 
     return jsonify({'status': 'ok'})
 
+import subprocess, platform, re, json
+from flask import jsonify
 
+@app.route('/api/wifi_scan')
+def wifi_scan():
+    try:
+        system = platform.system().lower()
+        networks = []
+        source = "netsh"
 
+        if "windows" in system:
+            output = subprocess.check_output(
+                ["netsh", "wlan", "show", "networks", "mode=bssid"],
+                encoding="utf-8", errors="ignore"
+            )
+
+            ssids = re.findall(r"SSID \d+ : (.+)", output)
+            bssids = re.findall(r"BSSID \d+ : ([\w:]+)", output)
+            signals = re.findall(r"Signal\s+:\s+(\d+)%", output)
+            auths = re.findall(r"Authentication\s+:\s+(.+)", output)
+            encryptions = re.findall(r"Encryption\s+:\s+(.+)", output)
+            channels = re.findall(r"Channel\s+:\s+(\d+)", output)
+            radios = re.findall(r"Radio type\s+:\s+(.+)", output)
+
+            for i, ssid in enumerate(ssids):
+                networks.append({
+                    "ssid": ssid.strip(),
+                    "bssid": bssids[i] if i < len(bssids) else "",
+                    "signal": int(signals[i]) if i < len(signals) else 0,
+                    "auth": auths[i] if i < len(auths) else "Unknown",
+                    "encryption": encryptions[i] if i < len(encryptions) else "Unknown",
+                    "channel": channels[i] if i < len(channels) else "-",
+                    "radio": radios[i] if i < len(radios) else ""
+                })
+
+        elif "linux" in system:
+            source = "nmcli"
+            output = subprocess.check_output(
+                ["nmcli", "-t", "-f", "SSID,BSSID,SIGNAL,CHAN,SECURITY", "dev", "wifi"],
+                encoding="utf-8", errors="ignore"
+            )
+            for line in output.splitlines():
+                if not line.strip():
+                    continue
+                parts = line.split(":")
+                networks.append({
+                    "ssid": parts[0] or "<hidden>",
+                    "bssid": parts[1] if len(parts) > 1 else "",
+                    "signal": int(parts[2]) if len(parts) > 2 else 0,
+                    "channel": parts[3] if len(parts) > 3 else "-",
+                    "auth": parts[4] if len(parts) > 4 else "Unknown"
+                })
+
+        else:
+            # Fallback: fake data so UI still works
+            source = "demo"
+            networks = [
+                {"ssid": "Example WiFi", "signal": 80, "auth": "WPA2-Personal", "channel": 6, "bssid": "AA:BB:CC:DD:EE:FF", "radio": "802.11n"},
+                {"ssid": "OfficeNet", "signal": 65, "auth": "WPA3", "channel": 11, "bssid": "11:22:33:44:55:66", "radio": "802.11ac"}
+            ]
+
+        return jsonify({"source": source, "networks": networks})
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 # -------------------
 if __name__ == "__main__":
