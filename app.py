@@ -414,6 +414,120 @@ def wifi_scan():
 
     except Exception as e:
         return jsonify({"error": str(e)})
+    
+
+# ---- Início: LAN discovery & simple port-scan ----
+import ipaddress
+import socket
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from flask import request
+
+def ping_host_tcp(ip, ports=(80, 443), timeout=0.25):
+    """
+    Lightweight "alive" check: tenta conectar em portas TCP comuns.
+    Retorna True se qualquer porta responder.
+    Não requer privilégios especiais.
+    """
+    ip_str = str(ip)
+    for port in ports:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(timeout)
+            s.connect((ip_str, port))
+            s.close()
+            return True
+        except:
+            pass
+    return False
+
+def scan_port(ip, port, timeout=0.3):
+    """Tenta conexão TCP simples (connect scan). Retorna True se aberta."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        s.connect((ip, port))
+        s.close()
+        return True
+    except:
+        return False
+
+@app.route('/api/lan_scan', methods=['POST'])
+@login_required
+def lan_scan():
+    """
+    POST JSON body: { "subnet": "192.168.1.0/24", "concurrency": 200, "ports": [80,443] }
+    Returns: {"hosts":[{"ip":"192.168.1.5","alive":true}, ...], "count": N}
+    """
+    data = request.get_json() or {}
+    subnet = data.get('subnet', '').strip()
+    concurrency = int(data.get('concurrency', 200))
+    ports = data.get('ports', [80, 443])
+
+    if not subnet:
+        return jsonify({"error": "subnet required (e.g. 192.168.1.0/24)"}), 400
+
+    try:
+        net = ipaddress.ip_network(subnet, strict=False)
+    except Exception as e:
+        return jsonify({"error": f"invalid subnet: {e}"}), 400
+
+    ips = list(net.hosts())
+    hosts = []
+
+    # limit concurrency sensible upper bound
+    workers = max(10, min(concurrency, 500))
+
+    with ThreadPoolExecutor(max_workers=workers) as exe:
+        futures = {exe.submit(ping_host_tcp, ip, tuple(ports)): ip for ip in ips}
+        for fut in as_completed(futures):
+            ip = futures[fut]
+            try:
+                alive = bool(fut.result())
+            except Exception:
+                alive = False
+            if alive:
+                hosts.append({"ip": str(ip), "alive": True})
+
+    return jsonify({"hosts": hosts, "count": len(hosts)})
+
+@app.route('/api/port_scan', methods=['POST'])
+@login_required
+def port_scan():
+    """
+    POST JSON: { "ip": "192.168.1.10", "ports": [22,80,443], "concurrency": 200 }
+    Returns: { "ip": "192.168.1.10", "open_ports": [22,80] }
+    """
+    data = request.get_json() or {}
+    ip = data.get('ip')
+    ports = data.get('ports') or [22,80,443,8080]
+    concurrency = int(data.get('concurrency', 200))
+
+    if not ip:
+        return jsonify({"error":"ip required"}), 400
+
+    # sanitize ports to ints
+    try:
+        ports = [int(p) for p in ports]
+    except:
+        return jsonify({"error":"invalid ports list"}), 400
+
+    open_ports = []
+    workers = max(10, min(concurrency, 1000))
+
+    with ThreadPoolExecutor(max_workers=workers) as exe:
+        futures = {exe.submit(scan_port, ip, p): p for p in ports}
+        for fut in as_completed(futures):
+            p = futures[fut]
+            try:
+                if fut.result():
+                    open_ports.append(p)
+            except:
+                pass
+
+    return jsonify({"ip": ip, "open_ports": sorted(open_ports)})
+
+
+
 
 # -------------------
 if __name__ == "__main__":
